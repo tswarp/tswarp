@@ -1,6 +1,6 @@
 {
   "name": "luffy",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "description": "This package converts TS to Stylus",
   "main": "bin/cli.js",
   "bin": {
@@ -23,5 +23,10 @@
   "bugs": {
     "url": "https://github.com/Deepakraja03/luffy/issues"
   },
-  "homepage": "https://github.com/Deepakraja03/luffy#readme"
+  "homepage": "https://github.com/Deepakraja03/luffy#readme",
+  "devDependencies": {
+    "@types/node": "^22.14.1",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.8.3"
+  }
 }
