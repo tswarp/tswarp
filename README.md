@@ -6,37 +6,61 @@
 
 ---
 
-## Features
+## Requirements
 
-- **Project Initialization**: Quickly scaffold a new project with both TypeScript and Stylus Rust templates.
-- **TypeScript to Stylus Rust Compilation**: Compile TypeScript files into Stylus Rust code.
-- **Stylus Rust Validation**: Use `cargo stylus check` to validate Stylus Rust projects.
-- **Customizable Templates**: Comes with prebuilt templates for both TypeScript (converter) and Stylus Rust (logic).
+Before using `tswarp`, ensure your environment is properly set up with the following:
+
+### 1. **Rustup**
+Install Rustup, the Rust toolchain installer:
+```bash
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+```
+
+### 2. **Cargo**
+Cargo is the Rust package manager and is included with Rustup.
+
+### 3. **Add the WASM Compilation Target**
+Add the WebAssembly (WASM) target for Rust:
+```bash
+rustup target add wasm32-unknown-unknown
+# Verify it's installed
+rustup target list --installed | grep wasm
+```
+
+### 4. **Install `cargo-stylus`**
+Install the `cargo-stylus` package for Stylus Rust validation:
+```bash
+cargo install --force cargo-stylus
+# Quick check to ensure it's installed
+cargo stylus --version  # Should show 0.4.0 or newer
+```
+
+---
+
+## Setting Up Your Local Development Environment
+
+To set up a local Stylus Rust development environment, follow these steps:
+
+1. **Clone the Devnode Repository**
+```bash
+git clone https://github.com/OffchainLabs/nitro-devnode.git
+cd nitro-devnode
+```
+
+2. **Launch Your Local Arbitrum Chain**
+```bash
+./run-dev-node.sh
+```
 
 ---
 
 ## Installation
 
-### Prerequisites
-- **Node.js**: Ensure you have Node.js installed.
-- **Stylus Rust**: Install Stylus Rust using [Stylus Rustup](https://Stylus Rustup.rs/).
-
-### Install the CLI
-1. Clone this repository:
-   ```bash
-   git clone https://github.com/<your-username>/tswarp-cli.git
-   cd tswarp-cli
-   ```
-
-2. Install dependencies:
-   ```bash
-   npm install
-   ```
-
-3. Link the CLI globally:
-   ```bash
-   npm link
-   ```
+### Install the CLI via NPM
+Install the `tswarp` CLI globally via npm:
+```bash
+npm install -g tswarp
+```
 
 You can now use `tswarp` as a global command.
 
@@ -65,8 +89,10 @@ tswarp init <projectname>
 tswarp compile
 ```
 - **Description**: Compiles the TypeScript files in the `converter` directory into Stylus Rust code.
+- **Note**: This command should be run **inside the `converter` directory**.
 - **Example**:
   ```bash
+  cd converter
   tswarp compile
   ```
 
@@ -75,8 +101,10 @@ tswarp compile
 tswarp build
 ```
 - **Description**: Runs the `cargo stylus check` command in the current directory to validate Stylus Rust projects.
+- **Note**: This command should be run **inside the `logic` directory**.
 - **Example**:
   ```bash
+  cd logic
   tswarp build
   ```
 
@@ -115,7 +143,7 @@ When you initialize a new project with `tswarp init <projectname>`, the followin
 ├── logic/                     # Stylus Rust project
 │   ├── Cargo.toml             # Stylus Rust package configuration
 │   ├── Cargo.lock             # Stylus Rust dependencies lock file
-│   ├── Stylus Rust-toolchain.toml    # Stylus Rust toolchain configuration
+│   ├── rust-toolchain.toml    # Stylus Rust toolchain configuration
 │   ├── src/                   # Stylus Rust source code
 │   │   ├── main.rs            # Main Stylus Rust entry point
 │   │   └── lib.rs             # Stylus Rust library code
@@ -138,15 +166,10 @@ When you initialize a new project with `tswarp init <projectname>`, the followin
    cd myproject
    ```
 
-3. **Install Dependencies** (for the TypeScript converter):
-   ```bash
-   cd converter
-   npm install
-   ```
-
 ### Compiling TypeScript to Stylus Rust
 1. **Run the Compiler**:
    ```bash
+   cd converter
    tswarp compile
    ```
 
@@ -156,6 +179,7 @@ When you initialize a new project with `tswarp init <projectname>`, the followin
 ### Validating Stylus Rust Code
 1. **Run `cargo stylus check`**:
    ```bash
+   cd logic
    tswarp build
    ```
 
