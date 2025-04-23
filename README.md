@@ -1,8 +1,8 @@
-# Tswarp CLI
+# Tswarp
 
-![Tswarp CLI](templates/logic/header.png)
+![Tswarp](templates/logic/header.png)
 
-🚀 **Tswarp CLI** is a powerful tool that simplifies the process of converting TypeScript code to Stylus Rust and managing Stylus Rust projects. With just a few commands, you can initialize projects, compile TypeScript to Stylus Rust, and validate Stylus Rust projects using `cargo stylus check`.
+🚀 **Tswarp** is a powerful tool that simplifies the process of converting TypeScript code to Stylus Rust and managing Stylus Rust projects. With just a few commands, you can initialize projects, compile TypeScript to Stylus Rust, and validate Stylus Rust projects using `cargo stylus check`.
 
 ---
 
@@ -112,7 +112,7 @@ tswarp build
 ```bash
 tswarp --version
 ```
-- **Description**: Displays the current version of the Tswarp CLI.
+- **Description**: Displays the current version of the Tswarp.
 - **Example**:
   ```bash
   tswarp --version
@@ -211,4 +211,4 @@ This project is licensed under the [MIT License](LICENSE). See the `LICENSE` fil
 - **TypeScript**: A strongly typed programming language for JavaScript.
 - **Node.js**: The runtime for running the CLI.
 
-Enjoy using Tswarp CLI! 🚀
+Enjoy using Tswarp! 🚀
