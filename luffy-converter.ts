@@ -1,5 +1,7 @@
 import * as ts from 'typescript';
 import * as fs from 'fs';
+import * as path from 'path';
+import { updateCargoTomlOnCompile } from "./update-cargo-toml";
 
 // Helper function to map TypeScript types to Rust struct types
 function mapTypeScriptTypeToRustStruct(type: string): string {
@@ -159,11 +161,34 @@ ${implDeclaration}
     `.trim();
 }
 
-// Example usage of the converter
-const tsCode = fs.readFileSync('counter.ts', 'utf8');
-const stylusCode = convertToStylus(tsCode);
+function getProjectTsFile(): string {
+  const currentDirectoryName = path.basename(process.cwd());
+  const tsFilePath = path.join(process.cwd(), `${currentDirectoryName}.ts`);
 
-// Save the converted Stylus code to a file
-fs.writeFileSync('src/lib.rs', stylusCode);
+  if (!fs.existsSync(tsFilePath)) {
+      throw new Error(`❌ TypeScript file "${currentDirectoryName}.ts" not found in the current directory.`);
+  }
 
-console.log('Conversion complete!');
+  return tsFilePath;
+}
+
+try {
+  // Step 1: Update Cargo.toml
+  updateCargoTomlOnCompile();
+
+  // Step 2: Convert the TypeScript file to Rust
+  const tsFilePath = getProjectTsFile();
+  const tsCode = fs.readFileSync(tsFilePath, "utf8");
+  const stylusCode = convertToStylus(tsCode);
+
+  // Save the converted Stylus code to a file
+  const rustFilePath = path.join(process.cwd(), "src", "lib.rs");
+  fs.mkdirSync(path.dirname(rustFilePath), { recursive: true });
+  fs.writeFileSync(rustFilePath, stylusCode);
+
+  console.log("✅ Conversion complete!");
+  console.log(`👉 Rust code saved to: ${rustFilePath}`);
+} catch (error: any) {
+  console.error(error.message);
+  process.exit(1);
+}
