@@ -2,16 +2,16 @@
 
 ![Luffy CLI](templates/logic/header.png)
 
-🚀 **Luffy CLI** is a powerful tool that simplifies the process of converting TypeScript code to Rust and managing Rust projects. With just a few commands, you can initialize projects, compile TypeScript to Rust, and validate Rust projects using `cargo stylus check`.
+🚀 **Luffy CLI** is a powerful tool that simplifies the process of converting TypeScript code to Stylus Rust and managing Stylus Rust projects. With just a few commands, you can initialize projects, compile TypeScript to Stylus Rust, and validate Stylus Rust projects using `cargo stylus check`.
 
 ---
 
 ## Features
 
-- **Project Initialization**: Quickly scaffold a new project with both TypeScript and Rust templates.
-- **TypeScript to Rust Compilation**: Compile TypeScript files into Rust code.
-- **Rust Validation**: Use `cargo stylus check` to validate Rust projects.
-- **Customizable Templates**: Comes with prebuilt templates for both TypeScript (converter) and Rust (logic).
+- **Project Initialization**: Quickly scaffold a new project with both TypeScript and Stylus Rust templates.
+- **TypeScript to Stylus Rust Compilation**: Compile TypeScript files into Stylus Rust code.
+- **Stylus Rust Validation**: Use `cargo stylus check` to validate Stylus Rust projects.
+- **Customizable Templates**: Comes with prebuilt templates for both TypeScript (converter) and Stylus Rust (logic).
 
 ---
 
@@ -19,7 +19,7 @@
 
 ### Prerequisites
 - **Node.js**: Ensure you have Node.js installed.
-- **Rust**: Install Rust using [rustup](https://rustup.rs/).
+- **Stylus Rust**: Install Stylus Rust using [Stylus Rustup](https://Stylus Rustup.rs/).
 
 ### Install the CLI
 1. Clone this repository:
@@ -50,7 +50,7 @@ You can now use `luffy` as a global command.
 ```bash
 luffy init <projectname>
 ```
-- **Description**: Creates a new project with a TypeScript converter and Rust logic templates.
+- **Description**: Creates a new project with a TypeScript converter and Stylus Rust logic templates.
 - **Example**:
   ```bash
   luffy init myproject
@@ -58,13 +58,13 @@ luffy init <projectname>
 - **Result**:
   - A new directory `myproject` is created.
   - TypeScript templates are placed under `converter/`.
-  - Rust templates are placed under `logic/`.
+  - Stylus Rust templates are placed under `logic/`.
 
-#### 2. **Compile TypeScript to Rust**
+#### 2. **Compile TypeScript to Stylus Rust**
 ```bash
 luffy compile
 ```
-- **Description**: Compiles the TypeScript files in the `converter` directory into Rust code.
+- **Description**: Compiles the TypeScript files in the `converter` directory into Stylus Rust code.
 - **Example**:
   ```bash
   luffy compile
@@ -74,7 +74,7 @@ luffy compile
 ```bash
 luffy build
 ```
-- **Description**: Runs the `cargo stylus check` command in the current directory to validate Rust projects.
+- **Description**: Runs the `cargo stylus check` command in the current directory to validate Stylus Rust projects.
 - **Example**:
   ```bash
   luffy build
@@ -112,14 +112,14 @@ When you initialize a new project with `luffy init <projectname>`, the following
 │   ├── counter.ts             # TypeScript example file
 │   ├── package.json           # Node.js package configuration
 │   └── node_modules/          # Node.js dependencies
-├── logic/                     # Rust project
-│   ├── Cargo.toml             # Rust package configuration
-│   ├── Cargo.lock             # Rust dependencies lock file
-│   ├── rust-toolchain.toml    # Rust toolchain configuration
-│   ├── src/                   # Rust source code
-│   │   ├── main.rs            # Main Rust entry point
-│   │   └── lib.rs             # Rust library code
-│   └── examples/              # Example Rust files
+├── logic/                     # Stylus Rust project
+│   ├── Cargo.toml             # Stylus Rust package configuration
+│   ├── Cargo.lock             # Stylus Rust dependencies lock file
+│   ├── Stylus Rust-toolchain.toml    # Stylus Rust toolchain configuration
+│   ├── src/                   # Stylus Rust source code
+│   │   ├── main.rs            # Main Stylus Rust entry point
+│   │   └── lib.rs             # Stylus Rust library code
+│   └── examples/              # Example Stylus Rust files
 │       └── counter.rs
 ```
 
@@ -144,22 +144,22 @@ When you initialize a new project with `luffy init <projectname>`, the following
    npm install
    ```
 
-### Compiling TypeScript to Rust
+### Compiling TypeScript to Stylus Rust
 1. **Run the Compiler**:
    ```bash
    luffy compile
    ```
 
-2. **Check the Generated Rust Files**:
-   - Output files will be added to the Rust `logic` directory.
+2. **Check the Generated Stylus Rust Files**:
+   - Output files will be added to the Stylus Rust `logic` directory.
 
-### Validating Rust Code
+### Validating Stylus Rust Code
 1. **Run `cargo stylus check`**:
    ```bash
    luffy build
    ```
 
-2. **Fix Any Rust Issues**:
+2. **Fix Any Stylus Rust Issues**:
    - Review and fix any warnings or errors reported by the `cargo stylus check` command.
 
 ---
@@ -183,7 +183,7 @@ This project is licensed under the [MIT License](LICENSE). See the `LICENSE` fil
 
 ## Acknowledgments
 
-- **Rust**: The powerful toolchain for systems programming.
+- **Stylus Rust**: The powerful toolchain for systems programming.
 - **TypeScript**: A strongly typed programming language for JavaScript.
 - **Node.js**: The runtime for running the CLI.
 
