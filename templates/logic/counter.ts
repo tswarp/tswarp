@@ -1,8 +1,9 @@
 function view(
   _target: any,
   _context: ClassMethodDecoratorContext
-) {
-  // View decorator just marks the method
+): void {
+  // This decorator marks methods as "view"
+  // Add any additional logic if required
 }
 
 class Counter {

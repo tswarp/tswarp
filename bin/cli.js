@@ -13,7 +13,7 @@ switch (cmd) {
     require('../commands/init')(args);
     break;
   case 'compile':
-    require('../commands/compile')(); // 👈 This line makes compile work
+    require('../commands/compile')();
     break;
   default:
     console.log(`Unknown command: ${cmd}`);
