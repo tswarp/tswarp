@@ -1,17 +1,17 @@
 {
-  "name": "luffy",
+  "name": "tswarp",
   "version": "0.1.0",
   "description": "This package converts TS to Stylus",
   "main": "bin/cli.js",
   "bin": {
-    "luffy": "./bin/cli.js"
+    "tswarp": "./bin/cli.js"
   },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/Deepakraja03/luffy.git"
+    "url": "git+https://github.com/Deepakraja03/tswarp.git"
   },
   "keywords": [
     "ts",
@@ -21,9 +21,9 @@
   "author": "Gryffindors",
   "license": "ISC",
   "bugs": {
-    "url": "https://github.com/Deepakraja03/luffy/issues"
+    "url": "https://github.com/Deepakraja03/tswarp/issues"
   },
-  "homepage": "https://github.com/Deepakraja03/luffy#readme",
+  "homepage": "https://github.com/Deepakraja03/tswarp#readme",
   "devDependencies": {
     "@types/node": "^22.14.1",
     "ts-node": "^10.9.2",

@@ -4,13 +4,13 @@ const ora = require('ora'); // For spinners
 const figlet = require('figlet'); // For ASCII art
 const { version } = require('../package.json');
 
-// Function to display the Luffy banner
+// Function to display the tswarp banner
 function showBanner() {
   console.clear(); // Clear the terminal for a clean start
   console.log('\n' + chalk.blueBright('='.repeat(80)));
   console.log(
     chalk.blueBright(
-      figlet.textSync('Luffy', {
+      figlet.textSync('Tswarp', {
         font: 'ANSI Shadow', // Choose a font (many options available)
         horizontalLayout: 'default',
         verticalLayout: 'default',
@@ -20,17 +20,17 @@ function showBanner() {
     )
   );
   console.log(chalk.blueBright('='.repeat(80) + '\n'));
-  console.log(chalk.blueBright.bold('Luffy CLI - A tool for TypeScript to Rust conversion\n'));
+  console.log(chalk.blueBright.bold('Tswarp CLI - A tool for TypeScript to Rust conversion\n'));
 }
 
 // Function to display usage information
 function showUsage() {
   showBanner();
   console.log(chalk.blueBright.bold('Usage:\n'));
-  console.log(chalk.cyan('  luffy init <projectname>') + chalk.white('  - Initialize a new project'));
-  console.log(chalk.cyan('  luffy compile') + chalk.white('         - Compile TypeScript to Rust'));
-  console.log(chalk.cyan('  luffy --version') + chalk.white('       - Show the current version'));
-  console.log(chalk.cyan('  luffy --help') + chalk.white('          - Show usage information'));
+  console.log(chalk.cyan('  tswarp init <projectname>') + chalk.white('  - Initialize a new project'));
+  console.log(chalk.cyan('  tswarp compile') + chalk.white('         - Compile TypeScript to Rust'));
+  console.log(chalk.cyan('  tswarp --version') + chalk.white('       - Show the current version'));
+  console.log(chalk.cyan('  tswarp --help') + chalk.white('          - Show usage information'));
   console.log('\n' + chalk.blueBright('='.repeat(80)) + '\n');
 }
 
@@ -52,7 +52,7 @@ const [, , cmd, ...args] = process.argv;
 
 // Display version if the user requests it
 if (cmd === '--version') {
-  console.log('\n' + chalk.green.bold(`Luffy CLI version: ${version}`));
+  console.log('\n' + chalk.green.bold(`Tswarp CLI version: ${version}`));
   process.exit(0);
 }
 
@@ -67,7 +67,7 @@ switch (cmd) {
   case 'init':
     if (args.length === 0) {
       console.log(chalk.red('\n❌ Error: Missing project name.'));
-      console.log(chalk.yellow('👉 Example: ') + chalk.cyan('luffy init myproject\n'));
+      console.log(chalk.yellow('👉 Example: ') + chalk.cyan('tswarp init myproject\n'));
       process.exit(1);
     }
     withSpinner('Initializing project', async () => {

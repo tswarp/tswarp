@@ -1,8 +1,8 @@
-# Luffy CLI
+# Tswarp CLI
 
-![Luffy CLI](templates/logic/header.png)
+![Tswarp CLI](templates/logic/header.png)
 
-🚀 **Luffy CLI** is a powerful tool that simplifies the process of converting TypeScript code to Stylus Rust and managing Stylus Rust projects. With just a few commands, you can initialize projects, compile TypeScript to Stylus Rust, and validate Stylus Rust projects using `cargo stylus check`.
+🚀 **Tswarp CLI** is a powerful tool that simplifies the process of converting TypeScript code to Stylus Rust and managing Stylus Rust projects. With just a few commands, you can initialize projects, compile TypeScript to Stylus Rust, and validate Stylus Rust projects using `cargo stylus check`.
 
 ---
 
@@ -24,8 +24,8 @@
 ### Install the CLI
 1. Clone this repository:
    ```bash
-   git clone https://github.com/<your-username>/luffy-cli.git
-   cd luffy-cli
+   git clone https://github.com/<your-username>/tswarp-cli.git
+   cd tswarp-cli
    ```
 
 2. Install dependencies:
@@ -38,7 +38,7 @@
    npm link
    ```
 
-You can now use `luffy` as a global command.
+You can now use `tswarp` as a global command.
 
 ---
 
@@ -48,12 +48,12 @@ You can now use `luffy` as a global command.
 
 #### 1. **Initialize a New Project**
 ```bash
-luffy init <projectname>
+tswarp init <projectname>
 ```
 - **Description**: Creates a new project with a TypeScript converter and Stylus Rust logic templates.
 - **Example**:
   ```bash
-  luffy init myproject
+  tswarp init myproject
   ```
 - **Result**:
   - A new directory `myproject` is created.
@@ -62,49 +62,49 @@ luffy init <projectname>
 
 #### 2. **Compile TypeScript to Stylus Rust**
 ```bash
-luffy compile
+tswarp compile
 ```
 - **Description**: Compiles the TypeScript files in the `converter` directory into Stylus Rust code.
 - **Example**:
   ```bash
-  luffy compile
+  tswarp compile
   ```
 
 #### 3. **Run `cargo stylus check`**
 ```bash
-luffy build
+tswarp build
 ```
 - **Description**: Runs the `cargo stylus check` command in the current directory to validate Stylus Rust projects.
 - **Example**:
   ```bash
-  luffy build
+  tswarp build
   ```
 
 #### 4. **View CLI Version**
 ```bash
-luffy --version
+tswarp --version
 ```
-- **Description**: Displays the current version of the Luffy CLI.
+- **Description**: Displays the current version of the Tswarp CLI.
 - **Example**:
   ```bash
-  luffy --version
+  tswarp --version
   ```
 
 #### 5. **View Help Information**
 ```bash
-luffy --help
+tswarp --help
 ```
 - **Description**: Shows the help menu with a list of all available commands.
 - **Example**:
   ```bash
-  luffy --help
+  tswarp --help
   ```
 
 ---
 
 ## Project Structure
 
-When you initialize a new project with `luffy init <projectname>`, the following structure is created:
+When you initialize a new project with `tswarp init <projectname>`, the following structure is created:
 
 ```
 <projectname>/
@@ -130,7 +130,7 @@ When you initialize a new project with `luffy init <projectname>`, the following
 ### Initializing a Project
 1. **Create a New Project**:
    ```bash
-   luffy init myproject
+   tswarp init myproject
    ```
 
 2. **Navigate to the Project Directory**:
@@ -147,7 +147,7 @@ When you initialize a new project with `luffy init <projectname>`, the following
 ### Compiling TypeScript to Stylus Rust
 1. **Run the Compiler**:
    ```bash
-   luffy compile
+   tswarp compile
    ```
 
 2. **Check the Generated Stylus Rust Files**:
@@ -156,7 +156,7 @@ When you initialize a new project with `luffy init <projectname>`, the following
 ### Validating Stylus Rust Code
 1. **Run `cargo stylus check`**:
    ```bash
-   luffy build
+   tswarp build
    ```
 
 2. **Fix Any Stylus Rust Issues**:
@@ -187,4 +187,4 @@ This project is licensed under the [MIT License](LICENSE). See the `LICENSE` fil
 - **TypeScript**: A strongly typed programming language for JavaScript.
 - **Node.js**: The runtime for running the CLI.
 
-Enjoy using Luffy CLI! 🚀
+Enjoy using Tswarp CLI! 🚀

@@ -8,5 +8,5 @@
       "resolveJsonModule": true,
       "outDir": "./dist"
     },
-    "include": ["core_functions/luffy-converter.ts"]
+    "include": ["core_functions/tswarp-converter.ts"]
   }  

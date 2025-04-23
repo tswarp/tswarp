@@ -4,7 +4,7 @@ const ora = require('ora');
 const chalk = require('chalk');
 
 module.exports = async function compile() {
-  const converterPath = path.join(__dirname, '..','core_functions', 'luffy-converter.ts');
+  const converterPath = path.join(__dirname, '..','core_functions', 'tswarp-converter.ts');
   const spinner = ora('🔧 Compiling TypeScript to Stylus Rust...').start();
 
   try {

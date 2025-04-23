@@ -9,7 +9,7 @@ module.exports = async function init(args) {
   const projectName = args[0];
 
   if (!projectName) {
-    console.error(chalk.red('❌ Please provide a project name: luffy init myproject'));
+    console.error(chalk.red('❌ Please provide a project name: tswarp init myproject'));
     process.exit(1);
   }
 
