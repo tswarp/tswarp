@@ -41,6 +41,10 @@ cargo stylus --version  # Should show 0.4.0 or newer
 
 To set up a local Stylus Rust development environment, follow these steps:
 
+### Prerequisite: Install Docker
+Ensure you have Docker installed on your system. You can download and install Docker from [Docker's official website](https://www.docker.com/products/docker-desktop/).
+
+### Steps:
 1. **Clone the Devnode Repository**
 ```bash
 git clone https://github.com/OffchainLabs/nitro-devnode.git
@@ -51,6 +55,8 @@ cd nitro-devnode
 ```bash
 ./run-dev-node.sh
 ```
+
+This command uses Docker to set up and run the local Arbitrum chain. Ensure Docker is running before executing this command.
 
 ---
 
