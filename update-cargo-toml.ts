@@ -1,5 +1,6 @@
 import * as fs from "fs";
 import * as path from "path";
+import { execSync } from "child_process";
 
 // Function to extract the class name from the TypeScript file
 function extractClassName(filePath: string): string | null {
@@ -8,9 +9,23 @@ function extractClassName(filePath: string): string | null {
   return classMatch ? classMatch[1] : null;
 }
 
-// Function to update the `Cargo.toml` file
-function updateCargoToml(className: string, cargoPath: string): void {
+// Function to read the project name from `Cargo.toml`
+function getCargoProjectName(cargoPath: string): string | null {
   const cargoContent = fs.readFileSync(cargoPath, "utf8");
+  const nameMatch = cargoContent.match(/name\s*=\s*"([^"]+)"/);
+  return nameMatch ? nameMatch[1] : null;
+}
+
+// Function to update the `Cargo.toml` file
+function updateCargoToml(className: string, cargoPath: string): boolean {
+  const cargoContent = fs.readFileSync(cargoPath, "utf8");
+
+  // Check if the `[package]` name already matches the class name
+  const currentName = getCargoProjectName(cargoPath);
+  if (currentName === className.toLowerCase()) {
+    console.log(`ℹ️  Project name in Cargo.toml is already "${currentName}". No update needed.`);
+    return false; // No need to update
+  }
 
   // Update the `[package]` name
   const updatedPackageContent = cargoContent.replace(
@@ -32,6 +47,8 @@ function updateCargoToml(className: string, cargoPath: string): void {
 
   // Write the updated content back to the `Cargo.toml` file
   fs.writeFileSync(cargoPath, updatedBinContent, "utf8");
+  console.log(`✅ Cargo.toml updated successfully with class name: ${className}`);
+  return true; // Indicates that an update was made
 }
 
 // Main function to be executed
@@ -57,6 +74,19 @@ export function updateCargoTomlOnCompile(): void {
     process.exit(1);
   }
 
-  updateCargoToml(className, cargoTomlPath);
-  console.log(`✅ Cargo.toml updated successfully with class name: ${className}`);
+  // Update Cargo.toml and check if an update was made
+  const updated = updateCargoToml(className, cargoTomlPath);
+
+  // Regenerate the Cargo.lock file only if Cargo.toml was updated
+  if (updated) {
+    try {
+      execSync("cargo generate-lockfile", { stdio: "inherit" });
+      console.log(`✅ Cargo.lock updated successfully.`);
+    } catch (error) {
+      console.error(`❌ Failed to update Cargo.lock: ${error}`);
+      process.exit(1);
+    }
+  } else {
+    console.log(`ℹ️  No changes made to Cargo.toml. Skipping Cargo.lock regeneration.`);
+  }
 }

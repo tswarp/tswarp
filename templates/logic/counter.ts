@@ -15,26 +15,67 @@ function write(
 }
 
 class Project {
-    private number: number;
-    private active: boolean;
+  private number: number;
+  private active: boolean;
 
-    @view
-    getNumber(): number {
-        return this.number;
-    }
+  @view
+  getNumber(): number {
+      return this.number;
+  }
 
-    @view
-    getActive(): boolean {
-        return this.active;
+  @view
+  getActive(): boolean {
+      return this.active;
+  }
+
+  @write
+  setNumber(newNumber: number): void {
+      this.number = newNumber;
+  }
+
+  @write
+  setActive(newActive: boolean): void {
+      this.active = newActive;
+  }
+
+  @write
+  setNewNum(newActive: number): void {
+      let newNumber = this.number;
+      this.number = newActive;
+  }
+
+  @write
+  addNumber(newNumber: number): void {
+      let currentNumber = this.number;
+      this.number = currentNumber + newNumber;
+  }
+
+  @write
+  subNumber(newNumber: number): void {
+      let currentNumber = this.number;
+      this.number = currentNumber - newNumber;
+  }
+
+  @write
+  mulNumber(newNumber: number): void {
+      let currentNumber = this.number;
+      this.number = currentNumber * newNumber;
+  }
+
+  @write
+  divNumber(newNumber: number): void {
+      let currentNumber = this.number;
+      this.number = currentNumber / newNumber;
+  }
+
+  @write
+    setActiveValue(): void {
+        this.active = false;
     }
 
     @write
-    setNumber(newNumber: number): void {
-        this.number = newNumber;
-    }
-
-    @write
-    setActive(newActive: boolean): void {
-        this.active = newActive;
+    increment(): void {
+      let currentNumber = this.number;
+      this.number = currentNumber + 1;
     }
 }

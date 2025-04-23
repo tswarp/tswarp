@@ -123,50 +123,68 @@ function convertWriteMethod(node: ts.MethodDeclaration, fields: string[]): strin
   const snakeName = toSnakeCase(methodName);
 
   const parameters: string[] = [];
-  let structField: string | undefined;
+  const setLines: string[] = [];
+  const localAssignments: string[] = [];
 
-  // Iterate through the parameters
   node.parameters.forEach((param) => {
-      const normalParamName = param.name.getText();
-      const paramName = toSnakeCase(normalParamName);
-      const paramType = param.type?.getText() || "unknown";
-      const stylusParamType = mapTypeScriptTypeToRustStruct(paramType);
-      const rustParamType = mapReturnTypeToRustStruct(stylusParamType);
-
-      parameters.push(`${paramName}: ${rustParamType}`);
+    const paramName = toSnakeCase(param.name.getText());
+    const paramType = param.type?.getText() || "unknown";
+    const stylusParamType = mapTypeScriptTypeToRustStruct(paramType);
+    const rustParamType = mapReturnTypeToRustStruct(stylusParamType);
+    parameters.push(`${paramName}: ${rustParamType}`);
   });
 
-  // Analyze the method body
   node.body?.statements.forEach((statement) => {
-      // Look for direct assignments to struct fields
-      if (ts.isExpressionStatement(statement) && ts.isBinaryExpression(statement.expression)) {
-          const expr = statement.expression;
-          const left = expr.left.getText(); // Left-hand side of the assignment
-          const right = expr.right.getText(); // Right-hand side of the assignment
+    // Handle: let varName = this.field;
+    if (ts.isVariableStatement(statement)) {
+      const declaration = statement.declarationList.declarations[0];
+      const varName = toSnakeCase(declaration.name.getText());
+      const initializer = declaration.initializer?.getText();
 
-          // Check if the left-hand side is accessing a struct field
-          if (left.startsWith("this.")) {
-              const possibleField = left.replace("this.", ""); // Extract the struct field name
-              if (fields.includes(possibleField)) {
-                  structField = possibleField;
-              } else {
-                  // Fallback: Assume it's a struct field even if not in fields array
-                  structField = possibleField;
-              }
-          }
+      if (initializer?.startsWith("this.")) {
+        const fieldName = toSnakeCase(initializer.replace("this.", ""));
+        localAssignments.push(`let ${varName} = self.${fieldName}.get();`);
       }
+    }
+
+    // Handle: this.field = ...
+    if (ts.isExpressionStatement(statement) && ts.isBinaryExpression(statement.expression)) {
+      const expr = statement.expression;
+      const left = expr.left.getText();
+      const rightExpr = expr.right;
+
+      if (left.startsWith("this.")) {
+        const field = toSnakeCase(left.replace("this.", ""));
+
+        // Handle binary right-hand side like: x + 1
+        if (ts.isBinaryExpression(rightExpr)) {
+          const op = rightExpr.operatorToken.getText();
+          const leftOp = wrapLiterals(rightExpr.left);
+          const rightOp = wrapLiterals(rightExpr.right);
+          setLines.push(`self.${field}.set(${leftOp} ${op} ${rightOp});`);
+        } else {
+          // Handle direct assignment: this.field = 5 or this.field = someVar;
+          const value = wrapLiterals(rightExpr);
+          setLines.push(`self.${field}.set(${value});`);
+        }
+      }
+    }
   });
 
-  if (!structField) {
-      throw new Error(`No matching struct field found in method: ${methodName}`);
-  }
-
-  // Generate the Rust implementation for the write method
   return `
-  pub fn ${snakeName}(&mut self, ${parameters.join(", ")}) {
-      self.${structField}.set(${parameters[0]?.split(":")[0]});
-  }
+    pub fn ${snakeName}(&mut self, ${parameters.join(", ")}) {
+${localAssignments.length > 0 ? `        ${localAssignments.join("\n        ")}\n` : ""}        ${setLines.join("\n        ")}
+    }
   `.trim();
+}
+
+// Utility to wrap numeric literals with U256::from
+function wrapLiterals(expr: ts.Expression): string {
+  if (ts.isNumericLiteral(expr)) {
+    return `U256::from(${expr.getText()})`;
+  } else {
+    return toSnakeCase(expr.getText());
+  }
 }
 
 // Helper function to check if a method has a specific decorator
@@ -202,48 +220,52 @@ function extractClassFields(node: ts.ClassDeclaration): string[] {
 
 // Convert TypeScript class to Stylus Rust
 function convertToStylus(tsCode: string): string {
-    const sourceFile = ts.createSourceFile("temp.ts", tsCode, ts.ScriptTarget.Latest, true);
+  const sourceFile = ts.createSourceFile("temp.ts", tsCode, ts.ScriptTarget.Latest, true);
 
-    let structDeclaration = "";
-    let implDeclaration = "";
+  let structDeclaration = "";
+  let implDeclaration = "";
 
-    ts.forEachChild(sourceFile, (node) => {
-        if (ts.isClassDeclaration(node) && node.name) {
-            const className = node.name.getText();
+  ts.forEachChild(sourceFile, (node) => {
+      if (ts.isClassDeclaration(node) && node.name) {
+          const className = node.name.getText();
 
-            // Extract fields and convert the class into a Rust struct
-            const fields = extractClassFields(node);
-            structDeclaration += `
+          // Extract fields and convert the class into a Rust struct
+          const fields = extractClassFields(node);
+          structDeclaration += `
 sol_storage! {
-    #[entrypoint]
-    pub struct ${className} {
-        ${fields.join("\n        ")}
-    }
+  #[entrypoint]
+  pub struct ${className} {
+${fields.map(field => `        ${field}`).join('\n')}
+  }
 }
-            `.trim();
+          `.trim();
 
-            // Find all methods in the class
-            const methods = node.members.filter(ts.isMethodDeclaration);
+          // Find all methods in the class
+          const methods = node.members.filter(ts.isMethodDeclaration);
 
-            // Convert methods based on their decorators
-            const viewMethods = methods
-                .filter((method) => hasDecorator(method as ts.MethodDeclaration, "view"))
-                .map((method) => convertViewMethod(method as ts.MethodDeclaration, fields));
+          // Convert methods based on their decorators
+          const viewMethods = methods
+              .filter((method) => hasDecorator(method as ts.MethodDeclaration, "view"))
+              .map((method) => convertViewMethod(method as ts.MethodDeclaration, fields));
 
-            const writeMethods = methods
-                .filter((method) => hasDecorator(method as ts.MethodDeclaration, "write"))
-                .map((method) => convertWriteMethod(method as ts.MethodDeclaration, fields));
+          const writeMethods = methods
+              .filter((method) => hasDecorator(method as ts.MethodDeclaration, "write"))
+              .map((method) => convertWriteMethod(method as ts.MethodDeclaration, fields));
 
-            implDeclaration += `
+          const allMethods = [...viewMethods, ...writeMethods]
+              .map(method => method.split('\n').map(line => `        ${line}`).join('\n'))
+              .join('\n\n');
+
+          implDeclaration += `
 #[public]
 impl ${className} {
-${[...viewMethods, ...writeMethods].join("\n")}
+${allMethods}
 }
-            `.trim();
-        }
-    });
+          `.trim();
+      }
+  });
 
-    return `
+  return `
 #![cfg_attr(not(any(test, feature = "export-abi")), no_main)]
 extern crate alloc;
 
@@ -252,7 +274,7 @@ use stylus_sdk::{alloy_primitives::U256, prelude::*};
 ${structDeclaration}
 
 ${implDeclaration}
-    `.trim();
+  `.trim();
 }
 
 function getProjectTsFile(): string {
