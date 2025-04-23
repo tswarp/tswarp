@@ -20,7 +20,7 @@ function showBanner() {
     )
   );
   console.log(chalk.blueBright('='.repeat(80) + '\n'));
-  console.log(chalk.blueBright.bold('Tswarp CLI - A tool for TypeScript to Rust conversion\n'));
+  console.log(chalk.blueBright.bold('Tswarp CLI - A tool for TypeScript to Stylus Rust conversion\n'));
 }
 
 // Function to display usage information
@@ -28,7 +28,7 @@ function showUsage() {
   showBanner();
   console.log(chalk.blueBright.bold('Usage:\n'));
   console.log(chalk.cyan('  tswarp init <projectname>') + chalk.white('  - Initialize a new project'));
-  console.log(chalk.cyan('  tswarp compile') + chalk.white('         - Compile TypeScript to Rust'));
+  console.log(chalk.cyan('  tswarp compile') + chalk.white('         - Compile TypeScript to Stylus Rust'));
   console.log(chalk.cyan('  tswarp --version') + chalk.white('       - Show the current version'));
   console.log(chalk.cyan('  tswarp --help') + chalk.white('          - Show usage information'));
   console.log('\n' + chalk.blueBright('='.repeat(80)) + '\n');
@@ -77,7 +77,7 @@ switch (cmd) {
     break;
 
   case 'compile':
-    withSpinner('Compiling TypeScript to Rust', async () => {
+    withSpinner('Compiling TypeScript to Stylus Rust', async () => {
       const compile = require('../commands/compile');
       await compile();
     });
