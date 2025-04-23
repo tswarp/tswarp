@@ -40,7 +40,6 @@ class Counter {
 
   @write
   setNewNum(newActive: number): void {
-      let newNumber = this.number;
       this.number = newActive;
   }
 

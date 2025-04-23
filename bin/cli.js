@@ -82,7 +82,12 @@ switch (cmd) {
       await compile();
     });
     break;
-
+  case 'build':
+    withSpinner('Running "cargo stylus check"', async () => {
+      const build = require('../commands/build');
+      await build();
+    });
+      break;
   default:
     console.log(chalk.red(`\n❌ Unknown command: ${cmd}`));
     showUsage();
