@@ -37,6 +37,16 @@ cargo stylus --version  # Should show 0.4.0 or newer
 
 ---
 
+### 5. **Install Node.js Dependencies**
+Globally install the required Node.js packages for TypeScript support:
+```bash
+npm install -g typescript ts-node @types/node
+```
+
+Ensure that the above packages are properly installed before proceeding with the installation of `tswarp`.
+
+---
+
 ## Setting Up Your Local Development Environment
 
 To set up a local Stylus Rust development environment, follow these steps:
