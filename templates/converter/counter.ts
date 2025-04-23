@@ -14,7 +14,7 @@ function write(
   // Add any additional logic if required
 }
 
-class Project {
+class Counter {
   private number: number;
   private active: boolean;
 

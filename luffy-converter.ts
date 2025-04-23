@@ -1,7 +1,9 @@
 import * as ts from "typescript";
 import * as fs from "fs";
 import * as path from "path";
-import { updateCargoTomlOnCompile } from "./update-cargo-toml";
+import chalk from 'chalk';
+import ora from 'ora';
+import { updateCargoToml } from "./update-cargo-toml";
 
 // Helper function to map TypeScript types to Rust struct types
 function mapTypeScriptTypeToRustStruct(type: string): string {
@@ -278,33 +280,42 @@ ${implDeclaration}
 }
 
 function getProjectTsFile(): string {
-    const currentDirectoryName = path.basename(process.cwd());
-    const tsFilePath = path.join(process.cwd(), `${currentDirectoryName}.ts`);
+  const currentWorkingDir = process.cwd();
+  const parentDir = path.dirname(currentWorkingDir);
+  const projectName = path.basename(parentDir);
+  const tsFilePath = path.join(currentWorkingDir, `${projectName}.ts`);
 
-    if (!fs.existsSync(tsFilePath)) {
-        throw new Error(`❌ TypeScript file "${currentDirectoryName}.ts" not found in the current directory.`);
-    }
+  if (!fs.existsSync(tsFilePath)) {
+    throw new Error(
+      `${chalk.red('❌ Missing File:')} ${chalk.yellow(tsFilePath)}\n` +
+      `${chalk.cyan('👉 Expected a file named')} ${chalk.bold(`${projectName}.ts`)} ${chalk.cyan('in the current directory.')}`
+    );
+  }
 
-    return tsFilePath;
+  return tsFilePath;
 }
 
-try {
-    // Step 1: Update Cargo.toml
-    updateCargoTomlOnCompile();
+(async () => {
+  const spinner = ora('🔄 Converting TypeScript to Rust using Stylus...').start();
 
-    // Step 2: Convert the TypeScript file to Rust
+  try {
+    updateCargoToml();
+
     const tsFilePath = getProjectTsFile();
-    const tsCode = fs.readFileSync(tsFilePath, "utf8");
+    const tsCode = fs.readFileSync(tsFilePath, 'utf8');
     const stylusCode = convertToStylus(tsCode);
 
-    // Save the converted Stylus code to a file
-    const rustFilePath = path.join(process.cwd(), "src", "lib.rs");
+    const parentDir = path.dirname(process.cwd());
+    const rustFilePath = path.join(parentDir, 'logic', 'src', 'lib.rs');
     fs.mkdirSync(path.dirname(rustFilePath), { recursive: true });
     fs.writeFileSync(rustFilePath, stylusCode);
 
-    console.log("✅ Conversion complete!");
-    console.log(`👉 Rust code saved to: ${rustFilePath}`);
-} catch (error: any) {
+    spinner.succeed(chalk.green('✅ Conversion successful!'));
+    console.log(`${chalk.blueBright('📦 Output written to:')} ${chalk.white(rustFilePath)}`);
+  } catch (error: any) {
+    spinner.fail(chalk.red('❌ Conversion failed.'));
     console.error(error.message);
+    console.log(chalk.gray('💡 Ensure the TypeScript file exists and is correctly named.'));
     process.exit(1);
-}
+  }
+})();

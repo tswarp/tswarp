@@ -1,14 +1,19 @@
 const path = require('path');
 const { execSync } = require('child_process');
+const ora = require('ora');
+const chalk = require('chalk');
 
-module.exports = function compile() {
+module.exports = async function compile() {
   const converterPath = path.join(__dirname, '..', 'luffy-converter.ts');
+  const spinner = ora('🔧 Compiling TypeScript to Stylus Rust...').start();
 
   try {
-    // Compile the TS file and run it (requires ts-node to be installed)
+    // Attempt to run the converter using ts-node
     execSync(`npx ts-node ${converterPath}`, { stdio: 'inherit' });
-    console.log('✅ Stylus code generated successfully!');
+    spinner.succeed(chalk.green('✅ Stylus code generated successfully!'));
   } catch (error) {
-    console.error('❌ Failed to compile the TypeScript logic:', error.message);
+    spinner.fail(chalk.red('❌ Compilation failed.'));
+    console.error(chalk.red('Error:'), chalk.yellow(error.message));
+    console.log(chalk.cyan('\n👉 Tip: Make sure ts-node is installed (npm install -D ts-node)\n'));
   }
 };
