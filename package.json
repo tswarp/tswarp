@@ -11,7 +11,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/Deepakraja03/tswarp.git"
+    "url": "git+https://github.com/tswarp/tswarp.git"
   },
   "keywords": [
     "ts",
@@ -21,9 +21,9 @@
   "author": "Gryffindors",
   "license": "ISC",
   "bugs": {
-    "url": "https://github.com/Deepakraja03/tswarp/issues"
+    "url": "https://github.com/tswarp/tswarp/issues"
   },
-  "homepage": "https://github.com/Deepakraja03/tswarp#readme",
+  "homepage": "https://github.com/tswarp/tswarp#readme",
   "devDependencies": {
     "@types/node": "^22.14.1",
     "ts-node": "^10.9.2",
