@@ -1,6 +1,6 @@
 {
   "name": "tswarp",
-  "version": "0.2.1",
+  "version": "0.1.2",
   "description": "This package converts TS to Stylus",
   "main": "bin/cli.js",
   "bin": {
