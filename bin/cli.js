@@ -29,6 +29,9 @@ function showUsage() {
   console.log(chalk.blueBright.bold('Usage:\n'));
   console.log(chalk.cyan('  tswarp init <projectname>') + chalk.white('  - Initialize a new project'));
   console.log(chalk.cyan('  tswarp compile') + chalk.white('         - Compile TypeScript to Stylus Rust'));
+  console.log(chalk.cyan('  tswarp build') + chalk.white('           - Build and validate your Stylus Rust project'));
+  console.log(chalk.cyan("  tswarp estimate") + chalk.white("        - Estimate gas for deployment"));
+  console.log(chalk.cyan("  tswarp deploy") + chalk.white("          - Deploy the contract"));
   console.log(chalk.cyan('  tswarp --version') + chalk.white('       - Show the current version'));
   console.log(chalk.cyan('  tswarp --help') + chalk.white('          - Show usage information'));
   console.log('\n' + chalk.blueBright('='.repeat(80)) + '\n');
@@ -86,6 +89,19 @@ switch (cmd) {
     withSpinner('Running "cargo stylus check"', async () => {
       const build = require('../commands/build');
       await build();
+    });
+      break;
+  case "estimate":
+    withSpinner("Estimating gas for deployment", async () => {
+      const estimate = require("../commands/estimate");
+      await estimate();
+    });
+      break;
+
+  case "deploy":
+    withSpinner("Deploying the contract", async () => {
+      const deploy = require("../commands/deploy");
+      await deploy();
     });
       break;
   default:

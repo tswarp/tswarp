@@ -4,7 +4,7 @@ import chalk from 'chalk';
 import ora from 'ora';
 
 const updateCargoToml = async () => {
-  const spinner = ora('🔍 Updating Cargo.toml and Cargo.lock...').start();
+  const spinner = ora('🔍 Updating Cargo.toml, Cargo.lock, and src/main.rs...').start();
 
   try {
     const currentWorkingDir = process.cwd();
@@ -13,6 +13,7 @@ const updateCargoToml = async () => {
 
     const cargoTomlPath = path.join(parentDir, 'logic', 'Cargo.toml');
     const cargoLockPath = path.join(parentDir, 'logic', 'Cargo.lock');
+    const mainRsPath = path.join(parentDir, 'logic', 'src', 'main.rs');
 
     const updateFile = async (filePath: string, oldName: string, newName: string) => {
       try {
@@ -31,16 +32,22 @@ const updateCargoToml = async () => {
       }
     };
 
+    // Update Cargo.toml
     const updatedToml = await updateFile(cargoTomlPath, 'stylus-hello-world', projectName);
+
+    // Update Cargo.lock
     const updatedLock = await updateFile(cargoLockPath, 'stylus-hello-world', projectName);
 
-    if (updatedToml || updatedLock) {
-      spinner.succeed('🚀 Cargo files updated successfully!');
+    // Update src/main.rs
+    const updatedMainRs = await updateFile(mainRsPath, 'stylus_hello_world', projectName);
+
+    if (updatedToml || updatedLock || updatedMainRs) {
+      spinner.succeed('🚀 Cargo files and main.rs updated successfully!');
     } else {
-      spinner.info('📦 Cargo files already up to date. No changes made.');
+      spinner.info('📦 Cargo files and main.rs are already up to date. No changes made.');
     }
   } catch (error: any) {
-    spinner.fail(chalk.red('❌ Failed to update Cargo files.'));
+    spinner.fail(chalk.red('❌ Failed to update Cargo files and main.rs.'));
     console.error(chalk.red(error.message));
   }
 };

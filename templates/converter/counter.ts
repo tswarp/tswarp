@@ -14,9 +14,29 @@ function write(
   // Add any additional logic if required
 }
 
+function payable(
+  _target: any,
+  _context: ClassMethodDecoratorContext
+): void {
+  // This decorator marks methods as "write"
+  // Add any additional logic if required
+}
+
+function transfer(_recipientAddress: any, _value: any): void {
+}
+
+const msg = {
+  value(): any {
+   
+  }
+};
+
+type Address = any;
+
 class Counter {
   private number: number;
   private active: boolean;
+  private amount: number;
 
   @view
   getNumber(): number {
@@ -76,5 +96,17 @@ class Counter {
     increment(): void {
       let currentNumber = this.number;
       this.number = currentNumber + 1;
+    }
+
+    @payable
+    donateTo(recipientAddress: Address): void {
+      let sendAmount = msg.value();
+      transfer(recipientAddress, sendAmount);
+    }
+
+    @payable
+    add_from_msg_value(): void {
+      let newAmount = this.amount;
+      this.amount = newAmount + msg.value();
     }
 }

@@ -113,9 +113,9 @@ function convertViewMethod(node: ts.MethodDeclaration, fields: string[]): string
 
     // Generate the Rust implementation for the view method
     return `
-    pub fn ${snakeName}(&self) -> ${stylusReturnType} {
-        self.${matchingField}.get()
-    }
+pub fn ${snakeName}(&self) -> ${stylusReturnType} {
+    self.${matchingField}.get()
+}
     `.trim();
 }
 
@@ -189,6 +189,106 @@ function wrapLiterals(expr: ts.Expression): string {
   }
 }
 
+  
+function generatePayableRustCode(tsFunction: string): string {
+    const isPayable = tsFunction.includes('@payable');
+    if (!isPayable) return '// Not a payable method';
+  
+    const fnNameMatch = tsFunction.match(/@payable\s+(\w+)\(([^)]*)\)/);
+    const fnName = fnNameMatch?.[1] || 'unnamed_function';
+    const rawParams = fnNameMatch?.[2]?.trim() || '';
+  
+    // Parse parameters and convert to Rust-style (name: Type)
+    const params = rawParams
+      .split(',')
+      .map(p => p.trim())
+      .filter(Boolean)
+      .map(param => {
+        const [name, type] = param.split(':').map(s => s.trim());
+        const rustType = mapReturnTypeToRustStruct(type);
+        return `${toSnakeCase(name)}: ${rustType}`;
+      })
+      .join(', ');
+  
+    const rustFnHeader = `#[payable]\npub fn ${toSnakeCase(fnName)}(&mut self${params ? `, ${params}` : ''}) {\n`;
+  
+    const bodyLines = tsFunction
+      .split('{')[1]
+      ?.split('}')[0]
+      .split('\n')
+      .map(l => l.trim())
+      .filter(Boolean) || [];
+  
+    const variableMap: Record<string, string> = {};
+    let rustCode = rustFnHeader;
+  
+    for (const line of bodyLines) {
+      // let declarations
+      const letMatch = line.match(/^let\s+(\w+)\s*=\s*(.+);?$/);
+      if (letMatch) {
+        const [_, originalVar, exprRaw] = letMatch;
+        const snakeVar = toSnakeCase(originalVar);
+        variableMap[originalVar] = snakeVar;
+  
+        let expression = exprRaw
+          .replace(/this\.(\w+)/g, (_, v) => `self.${toSnakeCase(v)}.get()`)
+          .replace(/msg\.value\(\)/g, 'self.vm().msg_value()')
+          .replace(/;$/, '');
+  
+        rustCode += `    let ${snakeVar} = ${expression};\n`;
+        continue;
+      }
+  
+      // Assignments: this.variable = ...
+      const assignMatch = line.match(/this\.(\w+)\s*=\s*(.+);?$/);
+      if (assignMatch) {
+        const variable = assignMatch[1];
+        let expression = assignMatch[2];
+  
+        for (const [orig, snake] of Object.entries(variableMap)) {
+          expression = expression.replace(new RegExp(`\\b${orig}\\b`, 'g'), snake);
+        }
+  
+        expression = expression
+          .replace(/this\.(\w+)/g, (_, v) => `self.${toSnakeCase(v)}.get()`)
+          .replace(/msg\.value\(\)/g, 'self.vm().msg_value()')
+          .replace(/;$/, '');
+  
+        rustCode += `    self.${toSnakeCase(variable)}.set(${expression});\n`;
+        continue;
+      }
+  
+      // Handle transfer(recipient, amount)
+      const transferMatch = line.match(/^transfer\s*\(\s*(.+)\s*,\s*(.+)\s*\);?$/);
+      if (transferMatch) {
+        let recipient = transferMatch[1].trim();
+        let amount = transferMatch[2].trim();
+  
+        recipient = variableMap[recipient] || toSnakeCase(recipient);
+        amount = variableMap[amount] || toSnakeCase(amount);
+  
+        rustCode += `    self.vm().transfer_eth(${recipient}, ${amount}).expect("Transfer failed");\n`;
+        continue;
+      }
+  
+      // General fallback line
+      let converted = line;
+      for (const [orig, snake] of Object.entries(variableMap)) {
+        converted = converted.replace(new RegExp(`\\b${orig}\\b`, 'g'), snake);
+      }
+  
+      converted = converted
+        .replace(/this\.(\w+)/g, (_, v) => `self.${toSnakeCase(v)}.get()`)
+        .replace(/msg\.value\(\)/g, 'self.vm().msg_value()')
+        .replace(/;$/, '');
+  
+      rustCode += `    ${converted};\n`;
+    }
+  
+    rustCode += `}`;
+    return rustCode;
+  }
+
 // Helper function to check if a method has a specific decorator
 function hasDecorator(node: ts.MethodDeclaration, decoratorName: string): boolean {
     const decorators = ts.canHaveDecorators(node) ? ts.getDecorators(node) : undefined;
@@ -203,75 +303,86 @@ function hasDecorator(node: ts.MethodDeclaration, decoratorName: string): boolea
     });
 }
 
-// Helper function to extract fields from a TypeScript class
-function extractClassFields(node: ts.ClassDeclaration): string[] {
+function isAddressTypeUsed(fields: string[], tsCode: string): boolean {
+    return fields.some((field) => field.includes("address")) || tsCode.includes("Address");
+  }
+  
+  // Helper function to extract fields from a TypeScript class
+  function extractClassFields(node: ts.ClassDeclaration): string[] {
     const fields: string[] = [];
-
     node.members.forEach((member) => {
-        if (ts.isPropertyDeclaration(member) && member.name) {
-            const fieldName = member.name.getText();
-            const fieldType = member.type?.getText() || "unknown";
-            const rustType = mapTypeScriptTypeToRustStruct(fieldType);
-
-            fields.push(`${rustType} ${fieldName};`);
-        }
+      if (ts.isPropertyDeclaration(member) && member.name) {
+        const fieldName = member.name.getText();
+        const fieldType = member.type?.getText() || "unknown";
+        const rustType = mapTypeScriptTypeToRustStruct(fieldType);
+        fields.push(`${rustType} ${fieldName};`);
+      }
     });
-
     return fields;
-}
+  }
 
 // Convert TypeScript class to Stylus Rust
 function convertToStylus(tsCode: string): string {
   const sourceFile = ts.createSourceFile("temp.ts", tsCode, ts.ScriptTarget.Latest, true);
-
   let structDeclaration = "";
   let implDeclaration = "";
+  const fields: string[] = [];
+  let addressUsed = false;
 
   ts.forEachChild(sourceFile, (node) => {
-      if (ts.isClassDeclaration(node) && node.name) {
-          const className = node.name.getText();
+    if (ts.isClassDeclaration(node) && node.name) {
+      const className = node.name.getText();
 
-          // Extract fields and convert the class into a Rust struct
-          const fields = extractClassFields(node);
-          structDeclaration += `
+      // Extract fields and convert the class into a Rust struct
+      const fields = extractClassFields(node);
+      structDeclaration += `
 sol_storage! {
   #[entrypoint]
   pub struct ${className} {
 ${fields.map(field => `        ${field}`).join('\n')}
   }
 }
-          `.trim();
+      `.trim();
 
-          // Find all methods in the class
-          const methods = node.members.filter(ts.isMethodDeclaration);
+      const methods = node.members.filter(ts.isMethodDeclaration);
 
-          // Convert methods based on their decorators
-          const viewMethods = methods
-              .filter((method) => hasDecorator(method as ts.MethodDeclaration, "view"))
-              .map((method) => convertViewMethod(method as ts.MethodDeclaration, fields));
+      // Convert methods based on their decorators
+      const viewMethods = methods
+        .filter((method) => hasDecorator(method, "view"))
+        .map((method) => convertViewMethod(method, fields));
 
-          const writeMethods = methods
-              .filter((method) => hasDecorator(method as ts.MethodDeclaration, "write"))
-              .map((method) => convertWriteMethod(method as ts.MethodDeclaration, fields));
+      const writeMethods = methods
+        .filter((method) => hasDecorator(method, "write"))
+        .map((method) => convertWriteMethod(method, fields));
 
-          const allMethods = [...viewMethods, ...writeMethods]
-              .map(method => method.split('\n').map(line => `        ${line}`).join('\n'))
-              .join('\n\n');
+      const payableMethods = methods
+        .filter((method) => hasDecorator(method, "payable"))
+        .map((method) => {
+          const methodText = method.getFullText(sourceFile);
+          return generatePayableRustCode(methodText);
+        });
 
-          implDeclaration += `
+      const allMethods = [...viewMethods, ...writeMethods, ...payableMethods]
+        .map(method => method.split('\n').map(line => `        ${line}`).join('\n'))
+        .join('\n\n');
+
+      implDeclaration += `
 #[public]
 impl ${className} {
 ${allMethods}
 }
-          `.trim();
-      }
+      `.trim();
+    }
   });
+
+  addressUsed = isAddressTypeUsed(fields, tsCode);
+
 
   return `
 #![cfg_attr(not(any(test, feature = "export-abi")), no_main)]
 extern crate alloc;
 
-use stylus_sdk::{alloy_primitives::U256, prelude::*};
+use stylus_sdk::{alloy_primitives::{U256${addressUsed ? ", Address" : ""}}, prelude::*};
 
 ${structDeclaration}
 
