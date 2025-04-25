@@ -25,7 +25,7 @@ async function estimateGas() {
         reject(new Error(stderr));
       } else {
         console.log(chalk.green("✅ Gas estimation successful!"));
-        console.log(chalk.white(stdout)); // Display the output of the command
+        console.log(chalk.white(stdout));
         resolve();
       }
     });
