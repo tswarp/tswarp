@@ -210,7 +210,7 @@ async function estimateGas() {
     );
   }
 
-  console.log(chalk.yellow("This process may take a few minutes. Please wait..."));
+  console.log(chalk.yellow("\nThis process may take a few minutes. Please wait..."));
 
   const command = `cargo stylus deploy --endpoint='${endpoint}' --private-key='${privateKey}' --estimate-gas`;
 
@@ -241,9 +241,9 @@ async function deployContract() {
     );
   }
 
-  const command = `cargo stylus deploy --endpoint='${endpoint}' --private-key='${privateKey}'`;
+  console.log(chalk.yellow("\nThis process may take a few minutes. Please wait..."));
 
-  console.log(chalk.cyan("🔄 Deploying the contract..."));
+  const command = `cargo stylus deploy --endpoint='${endpoint}' --private-key='${privateKey}'`;
 
   return new Promise((resolve, reject) => {
     exec(command, (error, stdout, stderr) => {
