@@ -202,7 +202,7 @@ impl Erc20 {
 
     pub fn allowance(&self, owner: Address, spender: Address) -> U256 {
         self.allowances.getter(owner).get(spender)
-    }
+    } 
 }
 
 impl Erc20 {

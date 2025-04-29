@@ -13,7 +13,7 @@ use stylus_sdk::{
     prelude::*,
 };
 use crate::erc20::{Erc20, Erc20Error};
-
+ 
 // Define the entrypoint as a Solidity storage object. The sol_storage! macro
 // will generate Rust-equivalent structs with all fields mapped to Solidity-equivalent
 // storage slots and types.

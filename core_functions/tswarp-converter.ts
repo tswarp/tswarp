@@ -332,7 +332,7 @@ function convertToStylus(tsCode: string): string {
   ts.forEachChild(sourceFile, (node) => {
     if (ts.isClassDeclaration(node) && node.name) {
       const className = node.name.getText();
-
+ 
       // Extract fields and convert the class into a Rust struct
       const fields = extractClassFields(node);
       structDeclaration += `
