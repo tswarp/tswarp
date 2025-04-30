@@ -1,37 +1,4 @@
-function view(
-  _target: any,
-  _context: ClassMethodDecoratorContext
-): void {
-  // This decorator marks methods as "view"
-  // Add any additional logic if required
-}
-
-function write(
-  _target: any,
-  _context: ClassMethodDecoratorContext
-): void {
-  // This decorator marks methods as "write"
-  // Add any additional logic if required
-}
-
-function payable(
-  _target: any,
-  _context: ClassMethodDecoratorContext
-): void {
-  // This decorator marks methods as "write"
-  // Add any additional logic if required
-}
-
-function transfer(_recipientAddress: any, _value: any): void {
-}
-
-const msg = {
-  value(): any {
-   
-  }
-};
-
-type Address = any;
+import { view, write, payable, transfer, msg, Address } from 'tswarp';
 
 class Counter {
   private number: number;

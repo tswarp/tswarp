@@ -6,6 +6,14 @@
   "bin": {
     "tswarp": "./bin/cli.js"
   },
+  "exports": {
+    "./types": {
+      "import": "./src/types/index.ts"
+    },
+    "./utility": {
+      "import": "./src/utility/index.ts"
+    }
+  },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
