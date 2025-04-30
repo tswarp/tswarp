@@ -152,6 +152,7 @@ async function init(args) {
   spinner.start('📦 Running npm install in converter...');
   try {
     execSync('npm install', { cwd: converterPath, stdio: 'inherit' });
+    execSync('npm install tswarp', { cwd: converterPath, stdio: 'inherit' });
     spinner.succeed(chalk.green('npm install completed in converter'));
   } catch (err) {
     spinner.fail(chalk.red(`npm install failed in converter: ${err.message}`));
