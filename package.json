@@ -1,6 +1,6 @@
 {
   "name": "tswarp",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "description": "This package converts TS to Stylus",
   "main": "bin/cli.js",
   "bin": {
@@ -8,14 +8,15 @@
   },
   "exports": {
     "./types": {
-      "import": "./src/types/index.ts"
+      "import": "./dist/types/index.js"
     },
     "./utility": {
-      "import": "./src/utility/index.ts"
+      "import": "./dist/utility/index.js"
     }
   },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "tsc"
   },
   "repository": {
     "type": "git",

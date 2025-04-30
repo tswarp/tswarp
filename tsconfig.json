@@ -6,7 +6,11 @@
       "esModuleInterop": true,
       "strict": true,
       "resolveJsonModule": true,
-      "outDir": "./dist"
+      "outDir": "./dist",
+      "declaration": true,
+      "declarationDir": "dist/types",
+      "rootDir": "src",
+      "forceConsistentCasingInFileNames": true
     },
-    "include": ["core_functions/tswarp-converter.ts"]
-  }  
+    "include": ["src"]
+  }

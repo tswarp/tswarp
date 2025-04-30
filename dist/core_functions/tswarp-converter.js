@@ -1,0 +1,448 @@
+"use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+const ts = __importStar(require("typescript"));
+const fs = __importStar(require("fs"));
+const path = __importStar(require("path"));
+const chalk_1 = __importDefault(require("chalk"));
+const ora_1 = __importDefault(require("ora"));
+const update_cargo_toml_1 = require("./update-cargo-toml");
+// Helper function to map TypeScript types to Rust struct types
+function mapTypeScriptTypeToRustStruct(type) {
+    switch (type) {
+        case "number":
+            return "uint256";
+        case "boolean":
+            return "bool";
+        case "Uint128":
+            return "uint128";
+        case "Uint64":
+            return "uint64";
+        case "Uint32":
+            return "uint32";
+        case "Uint16":
+            return "uint16";
+        case "Uint8":
+            return "uint8";
+        case "Int256":
+            return "int256";
+        case "Int128":
+            return "int128";
+        case "Int64":
+            return "int64";
+        case "Int32":
+            return "int32";
+        case "Int16":
+            return "int16";
+        case "Int8":
+            return "int8";
+        case "Address":
+            return "address";
+        case "Bytes":
+            return "bytes";
+        default:
+            throw new Error(`Unsupported TypeScript type: ${type}`);
+    }
+}
+function mapReturnTypeToRustStruct(type) {
+    const normalizedType = type.toLowerCase();
+    switch (normalizedType) {
+        case "number":
+        case "uint256":
+            return "U256";
+        case "boolean":
+            return "bool";
+        case "bool":
+            return "bool";
+        case "uint128":
+            return "U128";
+        case "uint64":
+            return "U64";
+        case "uint32":
+            return "U32";
+        case "uint16":
+            return "U16";
+        case "uint8":
+            return "U8";
+        case "int256":
+            return "I256";
+        case "int128":
+            return "I128";
+        case "int64":
+            return "I64";
+        case "int32":
+            return "I32";
+        case "int16":
+            return "I16";
+        case "int8":
+            return "I8";
+        case "address":
+            return "Address";
+        case "bytes":
+            return "Bytes";
+        default:
+            throw new Error(`Unsupported TypeScript type: ${type}`);
+    }
+}
+function toSnakeCase(name) {
+    return name.replace(/([a-z])([A-Z])/g, "$1_$2").toLowerCase();
+}
+// Helper function to analyze and convert view methods
+function convertViewMethod(node, fields) {
+    const methodName = node.name.getText();
+    const snakeName = toSnakeCase(methodName);
+    const returnType = node.type?.getText();
+    // Map TypeScript types to Rust return types
+    const rustReturnType = mapTypeScriptTypeToRustStruct(returnType || "unknown");
+    const stylusReturnType = mapReturnTypeToRustStruct(rustReturnType || "unknown");
+    // Find the matching field for the return type (if any)
+    const matchingField = fields
+        .map((field) => {
+        const [rustType, fieldName] = field.replace(";", "").split(" ");
+        return { rustType, fieldName };
+    })
+        .find((field) => field.rustType === mapTypeScriptTypeToRustStruct(returnType || "unknown"))?.fieldName;
+    if (!matchingField) {
+        throw new Error(`No matching field found for return type: ${returnType}`);
+    }
+    // Generate the Rust implementation for the view method
+    return `    pub fn ${snakeName}(&self) -> ${stylusReturnType} {
+        self.${matchingField}.get()
+    }`;
+}
+// Helper function to analyze and convert write methods
+function convertWriteMethod(node, fields) {
+    const methodName = node.name.getText();
+    const snakeName = toSnakeCase(methodName);
+    const parameters = [];
+    const bodyLines = [];
+    // Process parameters
+    node.parameters.forEach((param) => {
+        const paramName = toSnakeCase(param.name.getText());
+        const paramType = param.type?.getText() || "unknown";
+        const rustParamType = mapReturnTypeToRustStruct(paramType);
+        parameters.push(`${paramName}: ${rustParamType}`);
+    });
+    // Process the body of the method
+    const processStatement = (statement) => {
+        const result = [];
+        // Handle variable declarations (e.g., let currentCounter = this.counter;)
+        if (ts.isVariableStatement(statement)) {
+            const declaration = statement.declarationList.declarations[0];
+            const varName = toSnakeCase(declaration.name.getText());
+            const initializer = declaration.initializer;
+            if (initializer) {
+                const initValue = wrapExpression(initializer);
+                result.push(`let ${varName} = ${initValue};`);
+            }
+        }
+        // Handle assignments (e.g., this.counter = currentCounter + value;)
+        else if (ts.isExpressionStatement(statement) && ts.isBinaryExpression(statement.expression)) {
+            const expr = statement.expression;
+            const left = expr.left.getText();
+            const right = wrapExpression(expr.right);
+            if (left.startsWith("this.")) {
+                const field = toSnakeCase(left.replace("this.", ""));
+                result.push(`self.${field}.set(${right});`);
+            }
+        }
+        // Handle if-else chains properly (including else if)
+        else if (ts.isIfStatement(statement)) {
+            const ifClauses = [];
+            let elseBlock = [];
+            // Collect all conditions and blocks in the if-else chain
+            let currentStatement = statement;
+            while (currentStatement && ts.isIfStatement(currentStatement)) {
+                const condition = wrapExpression(currentStatement.expression);
+                const thenBlock = processBlock(currentStatement.thenStatement);
+                ifClauses.push({
+                    condition,
+                    block: thenBlock
+                });
+                if (!currentStatement.elseStatement) {
+                    break;
+                }
+                else if (ts.isIfStatement(currentStatement.elseStatement)) {
+                    currentStatement = currentStatement.elseStatement;
+                }
+                else {
+                    elseBlock = processBlock(currentStatement.elseStatement);
+                    break;
+                }
+            }
+            // Generate Rust code for the if-else chain
+            for (let i = 0; i < ifClauses.length; i++) {
+                const { condition, block } = ifClauses[i];
+                const prefix = i === 0 ? "if" : "} else if";
+                result.push(`${prefix} ${condition} {`);
+                result.push(`    ${block.join("\n    ")}`);
+            }
+            if (elseBlock.length > 0) {
+                result.push(`} else {`);
+                result.push(`    ${elseBlock.join("\n    ")}`);
+            }
+            if (ifClauses.length > 0) {
+                result.push(`}`);
+            }
+        }
+        return result;
+    };
+    const processBlock = (block) => {
+        if (ts.isBlock(block)) {
+            return block.statements.flatMap(processStatement);
+        }
+        else {
+            return processStatement(block);
+        }
+    };
+    node.body?.statements.forEach((statement) => {
+        bodyLines.push(...processStatement(statement));
+    });
+    return `    pub fn ${snakeName}(&mut self, ${parameters.join(", ")}) {
+        ${bodyLines.join("\n        ")}
+    }`;
+}
+// Helper function to wrap literals or expressions
+function wrapExpression(node) {
+    if (ts.isNumericLiteral(node)) {
+        return `U256::from(${node.getText()})`;
+    }
+    else if (ts.isIdentifier(node)) {
+        return toSnakeCase(node.getText());
+    }
+    else if (ts.isBinaryExpression(node)) {
+        const left = wrapExpression(node.left);
+        const operator = node.operatorToken.getText();
+        const right = wrapExpression(node.right);
+        return `${left} ${operator} ${right}`;
+    }
+    else if (ts.isPropertyAccessExpression(node) && node.expression.getText() === "this") {
+        return `self.${toSnakeCase(node.name.getText())}.get()`;
+    }
+    return node.getText();
+}
+function generatePayableRustCode(tsFunction) {
+    const isPayable = tsFunction.includes('@payable');
+    if (!isPayable)
+        return '// Not a payable method';
+    const fnNameMatch = tsFunction.match(/@payable\s+(\w+)\(([^)]*)\)/);
+    const fnName = fnNameMatch?.[1] || 'unnamed_function';
+    const rawParams = fnNameMatch?.[2]?.trim() || '';
+    // Parse parameters and convert to Rust-style (name: Type)
+    const params = rawParams
+        .split(',')
+        .map(p => p.trim())
+        .filter(Boolean)
+        .map(param => {
+        const [name, type] = param.split(':').map(s => s.trim());
+        const rustType = mapReturnTypeToRustStruct(type);
+        return `${toSnakeCase(name)}: ${rustType}`;
+    })
+        .join(', ');
+    const bodyLines = tsFunction
+        .split('{')[1]
+        ?.split('}')[0]
+        .split('\n')
+        .map(l => l.trim())
+        .filter(Boolean) || [];
+    const variableMap = {};
+    let rustCodeBody = [];
+    for (const line of bodyLines) {
+        // let declarations
+        const letMatch = line.match(/^let\s+(\w+)\s*=\s*(.+);?$/);
+        if (letMatch) {
+            const [_, originalVar, exprRaw] = letMatch;
+            const snakeVar = toSnakeCase(originalVar);
+            variableMap[originalVar] = snakeVar;
+            let expression = exprRaw
+                .replace(/this\.(\w+)/g, (_, v) => `self.${toSnakeCase(v)}.get()`)
+                .replace(/msg\.value\(\)/g, 'self.vm().msg_value()')
+                .replace(/;$/, '');
+            rustCodeBody.push(`let ${snakeVar} = ${expression};`);
+            continue;
+        }
+        // Assignments: this.variable = ...
+        const assignMatch = line.match(/this\.(\w+)\s*=\s*(.+);?$/);
+        if (assignMatch) {
+            const variable = assignMatch[1];
+            let expression = assignMatch[2];
+            for (const [orig, snake] of Object.entries(variableMap)) {
+                expression = expression.replace(new RegExp(`\\b${orig}\\b`, 'g'), snake);
+            }
+            expression = expression
+                .replace(/this\.(\w+)/g, (_, v) => `self.${toSnakeCase(v)}.get()`)
+                .replace(/msg\.value\(\)/g, 'self.vm().msg_value()')
+                .replace(/;$/, '');
+            rustCodeBody.push(`self.${toSnakeCase(variable)}.set(${expression});`);
+            continue;
+        }
+        // Handle transfer(recipient, amount)
+        const transferMatch = line.match(/^transfer\s*\(\s*(.+)\s*,\s*(.+)\s*\);?$/);
+        if (transferMatch) {
+            let recipient = transferMatch[1].trim();
+            let amount = transferMatch[2].trim();
+            recipient = variableMap[recipient] || toSnakeCase(recipient);
+            amount = variableMap[amount] || toSnakeCase(amount);
+            rustCodeBody.push(`self.vm().transfer_eth(${recipient}, ${amount}).expect("Transfer failed");`);
+            continue;
+        }
+        // General fallback line
+        let converted = line;
+        for (const [orig, snake] of Object.entries(variableMap)) {
+            converted = converted.replace(new RegExp(`\\b${orig}\\b`, 'g'), snake);
+        }
+        converted = converted
+            .replace(/this\.(\w+)/g, (_, v) => `self.${toSnakeCase(v)}.get()`)
+            .replace(/msg\.value\(\)/g, 'self.vm().msg_value()')
+            .replace(/;$/, '');
+        rustCodeBody.push(`${converted};`);
+    }
+    return `    #[payable]
+    pub fn ${toSnakeCase(fnName)}(&mut self${params ? `, ${params}` : ''}) {
+        ${rustCodeBody.join('\n        ')}
+    }`;
+}
+// Helper function to check if a method has a specific decorator
+function hasDecorator(node, decoratorName) {
+    const decorators = ts.canHaveDecorators(node) ? ts.getDecorators(node) : undefined;
+    if (!decorators)
+        return false;
+    return decorators.some((decorator) => {
+        if (ts.isCallExpression(decorator.expression)) {
+            const decoratorIdentifier = decorator.expression.expression;
+            return ts.isIdentifier(decoratorIdentifier) && decoratorIdentifier.text === decoratorName;
+        }
+        return ts.isIdentifier(decorator.expression) && decorator.expression.text === decoratorName;
+    });
+}
+function isAddressTypeUsed(fields, tsCode) {
+    return fields.some((field) => field.includes("address")) || tsCode.includes("Address");
+}
+// Helper function to extract fields from a TypeScript class
+function extractClassFields(node) {
+    const fields = [];
+    node.members.forEach((member) => {
+        if (ts.isPropertyDeclaration(member) && member.name) {
+            const fieldName = member.name.getText();
+            const fieldType = member.type?.getText() || "unknown";
+            const rustType = mapTypeScriptTypeToRustStruct(fieldType);
+            fields.push(`${rustType} ${fieldName};`);
+        }
+    });
+    return fields;
+}
+// Convert TypeScript class to Stylus Rust
+function convertToStylus(tsCode) {
+    const sourceFile = ts.createSourceFile("temp.ts", tsCode, ts.ScriptTarget.Latest, true);
+    let structDeclaration = "";
+    let implDeclaration = "";
+    const fields = [];
+    let addressUsed = false;
+    ts.forEachChild(sourceFile, (node) => {
+        if (ts.isClassDeclaration(node) && node.name) {
+            const className = node.name.getText();
+            // Extract fields and convert the class into a Rust struct
+            const fields = extractClassFields(node);
+            structDeclaration = `sol_storage! {
+    #[entrypoint]
+    pub struct ${className} {
+${fields.map(field => `        ${field}`).join('\n')}
+    }
+}`;
+            const methods = node.members.filter(ts.isMethodDeclaration);
+            // Convert methods based on their decorators
+            const viewMethods = methods
+                .filter((method) => hasDecorator(method, "view"))
+                .map((method) => convertViewMethod(method, fields));
+            const writeMethods = methods
+                .filter((method) => hasDecorator(method, "write"))
+                .map((method) => convertWriteMethod(method, fields));
+            const payableMethods = methods
+                .filter((method) => hasDecorator(method, "payable"))
+                .map((method) => {
+                const methodText = method.getFullText(sourceFile);
+                return generatePayableRustCode(methodText);
+            });
+            implDeclaration = `#[public]
+impl ${className} {
+${[...viewMethods, ...writeMethods, ...payableMethods].join('\n\n')}
+}`;
+        }
+    });
+    addressUsed = isAddressTypeUsed(fields, tsCode);
+    return `#![cfg_attr(not(any(test, feature = "export-abi")), no_main)]
+extern crate alloc;
+
+use stylus_sdk::{alloy_primitives::{U256${addressUsed ? ", Address" : ""}}, prelude::*};
+
+${structDeclaration}
+
+${implDeclaration}`;
+}
+function getProjectTsFile() {
+    const currentWorkingDir = process.cwd();
+    const parentDir = path.dirname(currentWorkingDir);
+    const projectName = path.basename(parentDir);
+    const tsFilePath = path.join(currentWorkingDir, `${projectName}.ts`);
+    if (!fs.existsSync(tsFilePath)) {
+        throw new Error(`${chalk_1.default.red('❌ Missing File:')} ${chalk_1.default.yellow(tsFilePath)}\n` +
+            `${chalk_1.default.cyan('👉 Expected a file named')} ${chalk_1.default.bold(`${projectName}.ts`)} ${chalk_1.default.cyan('in the current directory.')}`);
+    }
+    return tsFilePath;
+}
+(async () => {
+    const spinner = (0, ora_1.default)('🔄 Converting TypeScript to Rust using Stylus...').start();
+    try {
+        (0, update_cargo_toml_1.updateCargoToml)();
+        const tsFilePath = getProjectTsFile();
+        const tsCode = fs.readFileSync(tsFilePath, 'utf8');
+        const stylusCode = convertToStylus(tsCode);
+        const parentDir = path.dirname(process.cwd());
+        const rustFilePath = path.join(parentDir, 'logic', 'src', 'lib.rs');
+        fs.mkdirSync(path.dirname(rustFilePath), { recursive: true });
+        fs.writeFileSync(rustFilePath, stylusCode);
+        spinner.succeed(chalk_1.default.green('✅ Conversion successful!'));
+        console.log(`${chalk_1.default.blueBright('📦 Output written to:')} ${chalk_1.default.white(rustFilePath)}`);
+    }
+    catch (error) {
+        spinner.fail(chalk_1.default.red('❌ Conversion failed.'));
+        console.error(error.message);
+        console.log(chalk_1.default.gray('💡 Ensure the TypeScript file exists and is correctly named.'));
+        process.exit(1);
+    }
+})();
