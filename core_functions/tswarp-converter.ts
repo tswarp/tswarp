@@ -112,84 +112,138 @@ function convertViewMethod(node: ts.MethodDeclaration, fields: string[]): string
     }
 
     // Generate the Rust implementation for the view method
-    return `
-pub fn ${snakeName}(&self) -> ${stylusReturnType} {
-    self.${matchingField}.get()
-}
-    `.trim();
+    return `    pub fn ${snakeName}(&self) -> ${stylusReturnType} {
+        self.${matchingField}.get()
+    }`;
 }
 
 // Helper function to analyze and convert write methods
 function convertWriteMethod(node: ts.MethodDeclaration, fields: string[]): string {
-  const methodName = node.name.getText();
-  const snakeName = toSnakeCase(methodName);
+    const methodName = node.name.getText();
+    const snakeName = toSnakeCase(methodName);
 
-  const parameters: string[] = [];
-  const setLines: string[] = [];
-  const localAssignments: string[] = [];
+    const parameters: string[] = [];
+    const bodyLines: string[] = [];
 
-  node.parameters.forEach((param) => {
-    const paramName = toSnakeCase(param.name.getText());
-    const paramType = param.type?.getText() || "unknown";
-    const stylusParamType = mapTypeScriptTypeToRustStruct(paramType);
-    const rustParamType = mapReturnTypeToRustStruct(stylusParamType);
-    parameters.push(`${paramName}: ${rustParamType}`);
-  });
+    // Process parameters
+    node.parameters.forEach((param) => {
+        const paramName = toSnakeCase(param.name.getText());
+        const paramType = param.type?.getText() || "unknown";
+        const rustParamType = mapReturnTypeToRustStruct(paramType);
+        parameters.push(`${paramName}: ${rustParamType}`);
+    });
 
-  node.body?.statements.forEach((statement) => {
-    // Handle: let varName = this.field;
-    if (ts.isVariableStatement(statement)) {
-      const declaration = statement.declarationList.declarations[0];
-      const varName = toSnakeCase(declaration.name.getText());
-      const initializer = declaration.initializer?.getText();
+    // Process the body of the method
+    const processStatement = (statement: ts.Statement | ts.Expression): string[] => {
+        const result: string[] = [];
 
-      if (initializer?.startsWith("this.")) {
-        const fieldName = toSnakeCase(initializer.replace("this.", ""));
-        localAssignments.push(`let ${varName} = self.${fieldName}.get();`);
-      }
-    }
+        // Handle variable declarations (e.g., let currentCounter = this.counter;)
+        if (ts.isVariableStatement(statement)) {
+            const declaration = statement.declarationList.declarations[0];
+            const varName = toSnakeCase(declaration.name.getText());
+            const initializer = declaration.initializer;
 
-    // Handle: this.field = ...
-    if (ts.isExpressionStatement(statement) && ts.isBinaryExpression(statement.expression)) {
-      const expr = statement.expression;
-      const left = expr.left.getText();
-      const rightExpr = expr.right;
-
-      if (left.startsWith("this.")) {
-        const field = toSnakeCase(left.replace("this.", ""));
-
-        // Handle binary right-hand side like: x + 1
-        if (ts.isBinaryExpression(rightExpr)) {
-          const op = rightExpr.operatorToken.getText();
-          const leftOp = wrapLiterals(rightExpr.left);
-          const rightOp = wrapLiterals(rightExpr.right);
-          setLines.push(`self.${field}.set(${leftOp} ${op} ${rightOp});`);
-        } else {
-          // Handle direct assignment: this.field = 5 or this.field = someVar;
-          const value = wrapLiterals(rightExpr);
-          setLines.push(`self.${field}.set(${value});`);
+            if (initializer) {
+                const initValue = wrapExpression(initializer);
+                result.push(`let ${varName} = ${initValue};`);
+            }
         }
-      }
-    }
-  });
 
-  return `
-    pub fn ${snakeName}(&mut self, ${parameters.join(", ")}) {
-${localAssignments.length > 0 ? `        ${localAssignments.join("\n        ")}\n` : ""}        ${setLines.join("\n        ")}
-    }
-  `.trim();
+        // Handle assignments (e.g., this.counter = currentCounter + value;)
+        else if (ts.isExpressionStatement(statement) && ts.isBinaryExpression(statement.expression)) {
+            const expr = statement.expression;
+            const left = expr.left.getText();
+            const right = wrapExpression(expr.right);
+
+            if (left.startsWith("this.")) {
+                const field = toSnakeCase(left.replace("this.", ""));
+                result.push(`self.${field}.set(${right});`);
+            }
+        }
+
+        // Handle if-else chains properly (including else if)
+        else if (ts.isIfStatement(statement)) {
+            const ifClauses: {condition: string, block: string[]}[] = [];
+            let elseBlock: string[] = [];
+            
+            // Collect all conditions and blocks in the if-else chain
+            let currentStatement: ts.Statement | undefined = statement;
+            
+            while (currentStatement && ts.isIfStatement(currentStatement)) {
+                const condition = wrapExpression(currentStatement.expression);
+                const thenBlock = processBlock(currentStatement.thenStatement);
+                
+                ifClauses.push({
+                    condition,
+                    block: thenBlock
+                });
+                
+                if (!currentStatement.elseStatement) {
+                    break;
+                } else if (ts.isIfStatement(currentStatement.elseStatement)) {
+                    currentStatement = currentStatement.elseStatement;
+                } else {
+                    elseBlock = processBlock(currentStatement.elseStatement);
+                    break;
+                }
+            }
+            
+            // Generate Rust code for the if-else chain
+            for (let i = 0; i < ifClauses.length; i++) {
+                const { condition, block } = ifClauses[i];
+                const prefix = i === 0 ? "if" : "} else if";
+                
+                result.push(`${prefix} ${condition} {`);
+                result.push(`    ${block.join("\n    ")}`);
+            }
+            
+            if (elseBlock.length > 0) {
+                result.push(`} else {`);
+                result.push(`    ${elseBlock.join("\n    ")}`);
+            }
+            
+            if (ifClauses.length > 0) {
+                result.push(`}`);
+            }
+        }
+
+        return result;
+    };
+
+    const processBlock = (block: ts.Statement | ts.Block): string[] => {
+        if (ts.isBlock(block)) {
+            return block.statements.flatMap(processStatement);
+        } else {
+            return processStatement(block);
+        }
+    };
+
+    node.body?.statements.forEach((statement) => {
+        bodyLines.push(...processStatement(statement));
+    });
+
+    return `    pub fn ${snakeName}(&mut self, ${parameters.join(", ")}) {
+        ${bodyLines.join("\n        ")}
+    }`;
 }
 
-// Utility to wrap numeric literals with U256::from
-function wrapLiterals(expr: ts.Expression): string {
-  if (ts.isNumericLiteral(expr)) {
-    return `U256::from(${expr.getText()})`;
-  } else {
-    return toSnakeCase(expr.getText());
-  }
+// Helper function to wrap literals or expressions
+function wrapExpression(node: ts.Node): string {
+    if (ts.isNumericLiteral(node)) {
+        return `U256::from(${node.getText()})`;
+    } else if (ts.isIdentifier(node)) {
+        return toSnakeCase(node.getText());
+    } else if (ts.isBinaryExpression(node)) {
+        const left = wrapExpression(node.left);
+        const operator = node.operatorToken.getText();
+        const right = wrapExpression(node.right);
+        return `${left} ${operator} ${right}`;
+    } else if (ts.isPropertyAccessExpression(node) && node.expression.getText() === "this") {
+        return `self.${toSnakeCase(node.name.getText())}.get()`;
+    }
+    return node.getText();
 }
 
-  
 function generatePayableRustCode(tsFunction: string): string {
     const isPayable = tsFunction.includes('@payable');
     if (!isPayable) return '// Not a payable method';
@@ -210,8 +264,6 @@ function generatePayableRustCode(tsFunction: string): string {
       })
       .join(', ');
   
-    const rustFnHeader = `#[payable]\npub fn ${toSnakeCase(fnName)}(&mut self${params ? `, ${params}` : ''}) {\n`;
-  
     const bodyLines = tsFunction
       .split('{')[1]
       ?.split('}')[0]
@@ -220,7 +272,7 @@ function generatePayableRustCode(tsFunction: string): string {
       .filter(Boolean) || [];
   
     const variableMap: Record<string, string> = {};
-    let rustCode = rustFnHeader;
+    let rustCodeBody = [];
   
     for (const line of bodyLines) {
       // let declarations
@@ -235,7 +287,7 @@ function generatePayableRustCode(tsFunction: string): string {
           .replace(/msg\.value\(\)/g, 'self.vm().msg_value()')
           .replace(/;$/, '');
   
-        rustCode += `    let ${snakeVar} = ${expression};\n`;
+        rustCodeBody.push(`let ${snakeVar} = ${expression};`);
         continue;
       }
   
@@ -254,7 +306,7 @@ function generatePayableRustCode(tsFunction: string): string {
           .replace(/msg\.value\(\)/g, 'self.vm().msg_value()')
           .replace(/;$/, '');
   
-        rustCode += `    self.${toSnakeCase(variable)}.set(${expression});\n`;
+        rustCodeBody.push(`self.${toSnakeCase(variable)}.set(${expression});`);
         continue;
       }
   
@@ -267,7 +319,7 @@ function generatePayableRustCode(tsFunction: string): string {
         recipient = variableMap[recipient] || toSnakeCase(recipient);
         amount = variableMap[amount] || toSnakeCase(amount);
   
-        rustCode += `    self.vm().transfer_eth(${recipient}, ${amount}).expect("Transfer failed");\n`;
+        rustCodeBody.push(`self.vm().transfer_eth(${recipient}, ${amount}).expect("Transfer failed");`);
         continue;
       }
   
@@ -282,12 +334,14 @@ function generatePayableRustCode(tsFunction: string): string {
         .replace(/msg\.value\(\)/g, 'self.vm().msg_value()')
         .replace(/;$/, '');
   
-      rustCode += `    ${converted};\n`;
+      rustCodeBody.push(`${converted};`);
     }
   
-    rustCode += `}`;
-    return rustCode;
-  }
+    return `    #[payable]
+    pub fn ${toSnakeCase(fnName)}(&mut self${params ? `, ${params}` : ''}) {
+        ${rustCodeBody.join('\n        ')}
+    }`;
+}
 
 // Helper function to check if a method has a specific decorator
 function hasDecorator(node: ts.MethodDeclaration, decoratorName: string): boolean {
@@ -305,10 +359,10 @@ function hasDecorator(node: ts.MethodDeclaration, decoratorName: string): boolea
 
 function isAddressTypeUsed(fields: string[], tsCode: string): boolean {
     return fields.some((field) => field.includes("address")) || tsCode.includes("Address");
-  }
+}
   
-  // Helper function to extract fields from a TypeScript class
-  function extractClassFields(node: ts.ClassDeclaration): string[] {
+// Helper function to extract fields from a TypeScript class
+function extractClassFields(node: ts.ClassDeclaration): string[] {
     const fields: string[] = [];
     node.members.forEach((member) => {
       if (ts.isPropertyDeclaration(member) && member.name) {
@@ -319,7 +373,7 @@ function isAddressTypeUsed(fields: string[], tsCode: string): boolean {
       }
     });
     return fields;
-  }
+}
 
 // Convert TypeScript class to Stylus Rust
 function convertToStylus(tsCode: string): string {
@@ -330,64 +384,53 @@ function convertToStylus(tsCode: string): string {
   let addressUsed = false;
 
   ts.forEachChild(sourceFile, (node) => {
-    if (ts.isClassDeclaration(node) && node.name) {
-      const className = node.name.getText();
+      if (ts.isClassDeclaration(node) && node.name) {
+          const className = node.name.getText();
  
-      // Extract fields and convert the class into a Rust struct
-      const fields = extractClassFields(node);
-      structDeclaration += `
-sol_storage! {
-  #[entrypoint]
-  pub struct ${className} {
+          // Extract fields and convert the class into a Rust struct
+          const fields = extractClassFields(node);
+          structDeclaration = `sol_storage! {
+    #[entrypoint]
+    pub struct ${className} {
 ${fields.map(field => `        ${field}`).join('\n')}
-  }
-}
-      `.trim();
-
-      const methods = node.members.filter(ts.isMethodDeclaration);
-
-      // Convert methods based on their decorators
-      const viewMethods = methods
-        .filter((method) => hasDecorator(method, "view"))
-        .map((method) => convertViewMethod(method, fields));
-
-      const writeMethods = methods
-        .filter((method) => hasDecorator(method, "write"))
-        .map((method) => convertWriteMethod(method, fields));
-
-      const payableMethods = methods
-        .filter((method) => hasDecorator(method, "payable"))
-        .map((method) => {
-          const methodText = method.getFullText(sourceFile);
-          return generatePayableRustCode(methodText);
-        });
-
-      const allMethods = [...viewMethods, ...writeMethods, ...payableMethods]
-        .map(method => method.split('\n').map(line => `        ${line}`).join('\n'))
-        .join('\n\n');
-
-      implDeclaration += `
-#[public]
-impl ${className} {
-${allMethods}
-}
-      `.trim();
     }
+}`;
+
+          const methods = node.members.filter(ts.isMethodDeclaration);
+
+          // Convert methods based on their decorators
+          const viewMethods = methods
+              .filter((method) => hasDecorator(method, "view"))
+              .map((method) => convertViewMethod(method, fields));
+
+          const writeMethods = methods
+              .filter((method) => hasDecorator(method, "write"))
+              .map((method) => convertWriteMethod(method, fields));
+
+          const payableMethods = methods
+              .filter((method) => hasDecorator(method, "payable"))
+              .map((method) => {
+                  const methodText = method.getFullText(sourceFile);
+                  return generatePayableRustCode(methodText);
+              });
+
+          implDeclaration = `#[public]
+impl ${className} {
+${[...viewMethods, ...writeMethods, ...payableMethods].join('\n\n')}
+}`;
+      }
   });
 
   addressUsed = isAddressTypeUsed(fields, tsCode);
 
-
-  return `
-#![cfg_attr(not(any(test, feature = "export-abi")), no_main)]
+  return `#![cfg_attr(not(any(test, feature = "export-abi")), no_main)]
 extern crate alloc;
 
 use stylus_sdk::{alloy_primitives::{U256${addressUsed ? ", Address" : ""}}, prelude::*};
 
 ${structDeclaration}
 
-${implDeclaration}
-  `.trim();
+${implDeclaration}`;
 }
 
 function getProjectTsFile(): string {

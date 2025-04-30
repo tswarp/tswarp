@@ -37,6 +37,7 @@ class Counter {
   private number: number;
   private active: boolean;
   private amount: number;
+  private threshold: number;
 
   @view
   getNumber(): number {
@@ -96,6 +97,23 @@ class Counter {
     increment(): void {
       let currentNumber = this.number;
       this.number = currentNumber + 1;
+    }
+
+    @write
+    checkAndUpdate(value: number): void {
+      let currentCount = this.number;
+      let currentThreshold = this.threshold;
+      if (value == currentCount) {
+        this.number = value + 10;
+      } else if (value < currentCount) {
+        this.number = currentCount - value;
+      } else if (value > currentCount && value >= currentThreshold) {
+        this.number = currentCount + value;
+      } else if (value <= currentThreshold) {
+        this.number = currentThreshold - value;
+      } else {
+        this.number = 0;
+      }
     }
 
     @payable
