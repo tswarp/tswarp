@@ -1,4 +1,5 @@
-import { view, write, payable, transfer, msg, Address } from 'tswarp';
+import { view, write, payable, Address } from 'tswarp/types';
+import { msg, transfer } from 'tswarp/utility';
 
 class Counter {
   private number: number;
