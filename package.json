@@ -1,6 +1,6 @@
 {
   "name": "tswarp",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "This package converts TS to Stylus",
   "main": "bin/cli.js",
   "bin": {
@@ -12,6 +12,9 @@
     },
     "./utility": {
       "import": "./src/utility/index.ts"
+    },
+    "./IERC20": {
+      "import": "./src/IERC20/index.ts"
     }
   },
   "scripts": {
