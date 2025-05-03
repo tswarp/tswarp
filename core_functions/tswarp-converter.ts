@@ -377,61 +377,121 @@ function extractClassFields(node: ts.ClassDeclaration): string[] {
 
 // Convert TypeScript class to Stylus Rust
 function convertToStylus(tsCode: string): string {
-  const sourceFile = ts.createSourceFile("temp.ts", tsCode, ts.ScriptTarget.Latest, true);
-  let structDeclaration = "";
-  let implDeclaration = "";
-  const fields: string[] = [];
-  let addressUsed = false;
+    const sourceFile = ts.createSourceFile("temp.ts", tsCode, ts.ScriptTarget.Latest, true);
+    let structDeclaration = "";
+    let implDeclaration = "";
+    const fields: string[] = [];
+    let addressUsed = false;
+    let implementsIERC20 = false; // Flag to track IERC20 implementation
 
-  ts.forEachChild(sourceFile, (node) => {
-      if (ts.isClassDeclaration(node) && node.name) {
-          const className = node.name.getText();
- 
-          // Extract fields and convert the class into a Rust struct
-          const fields = extractClassFields(node);
-          structDeclaration = `sol_storage! {
+    ts.forEachChild(sourceFile, (node) => {
+        if (ts.isClassDeclaration(node) && node.name) {
+            const className = node.name.getText();
+
+            // Check if the class implements IERC20
+            implementsIERC20 = node.heritageClauses?.some((clause) =>
+                clause.types.some((type) => type.expression.getText() === "IERC20")
+            ) ?? false;
+            // Extract fields and convert the class into a Rust struct
+            const fields = extractClassFields(node);
+            structDeclaration = `sol_storage! {
     #[entrypoint]
     pub struct ${className} {
 ${fields.map(field => `        ${field}`).join('\n')}
+${implementsIERC20 ? `        #[borrow]
+        Erc20 erc20;` : ""}
     }
 }`;
 
-          const methods = node.members.filter(ts.isMethodDeclaration);
+            const methods = node.members.filter(ts.isMethodDeclaration);
 
-          // Convert methods based on their decorators
-          const viewMethods = methods
-              .filter((method) => hasDecorator(method, "view"))
-              .map((method) => convertViewMethod(method, fields));
+            // Convert methods based on their decorators
+            const viewMethods = methods
+                .filter((method) => hasDecorator(method, "view"))
+                .map((method) => convertViewMethod(method, fields));
 
-          const writeMethods = methods
-              .filter((method) => hasDecorator(method, "write"))
-              .map((method) => convertWriteMethod(method, fields));
+            const writeMethods = methods
+                .filter((method) => hasDecorator(method, "write"))
+                .map((method) => convertWriteMethod(method, fields));
 
-          const payableMethods = methods
-              .filter((method) => hasDecorator(method, "payable"))
-              .map((method) => {
-                  const methodText = method.getFullText(sourceFile);
-                  return generatePayableRustCode(methodText);
-              });
+            const payableMethods = methods
+                .filter((method) => hasDecorator(method, "payable"))
+                .map((method) => {
+                    const methodText = method.getFullText(sourceFile);
+                    return generatePayableRustCode(methodText);
+                });
 
-          implDeclaration = `#[public]
+            // Add IERC20-specific methods if applicable
+            const ierc20Methods = implementsIERC20 ? [
+                `    pub fn constructor(&mut self, name: String, symbol: String, decimals: u8) {
+        self.erc20.initialize(name, symbol, decimals);
+    }`,
+                `    pub fn mint(&mut self, value: U256) -> Result<(), Erc20Error> {
+        self.erc20.mint(msg::sender(), value)?;
+        Ok(())
+    }`,
+                `    pub fn mint_to(&mut self, to: Address, value: U256) -> Result<(), Erc20Error> {
+        self.erc20.mint(to, value)?;
+        Ok(())
+    }`,
+                `    pub fn burn(&mut self, value: U256) -> Result<(), Erc20Error> {
+        self.erc20.burn(msg::sender(), value)?;
+        Ok(())
+    }`,
+            ] : [];
+
+            implDeclaration = `#[public]
+${implementsIERC20 ? `#[inherit(Erc20)]` : ""}
 impl ${className} {
-${[...viewMethods, ...writeMethods, ...payableMethods].join('\n\n')}
+${[...viewMethods, ...writeMethods, ...payableMethods, ...ierc20Methods].join('\n\n')}
 }`;
-      }
-  });
+        }
+    });
 
-  addressUsed = isAddressTypeUsed(fields, tsCode);
+    addressUsed = isAddressTypeUsed(fields, tsCode);
 
-  return `#![cfg_attr(not(any(test, feature = "export-abi")), no_main)]
+    const additionalImports = implementsIERC20 ? `
+mod erc20;
+
+use stylus_sdk::{
+    msg,
+    storage::{StorageString, StorageUint}
+};
+
+use crate::erc20::{Erc20, Erc20Error};` : "";
+
+    return `#![cfg_attr(not(any(test, feature = "export-abi")), no_main)]
 extern crate alloc;
 
-use stylus_sdk::{alloy_primitives::{U256${addressUsed ? ", Address" : ""}}, prelude::*};
+use stylus_sdk::{alloy_primitives::{U256${addressUsed || implementsIERC20? ", Address" : ""}}, prelude::*};${additionalImports}
 
 ${structDeclaration}
 
 ${implDeclaration}`;
 }
+
+function checkImplementsIERC20(implementsIERC20: boolean, rustFilePath: string): void {
+    if (!implementsIERC20) {
+        return;
+    }
+    const parentFileDir = path.dirname(__filename);
+    const grandParentDir = path.dirname(parentFileDir);
+    const contractDir = path.join(grandParentDir, 'contract');
+    const erc20FilePath = path.join(contractDir, 'erc20.rs');
+  
+    if (fs.existsSync(erc20FilePath)) {
+      const destinationErc20FilePath = path.join(rustFilePath, 'erc20.rs');
+      fs.mkdirSync(path.dirname(destinationErc20FilePath), { recursive: true });
+
+      fs.copyFileSync(erc20FilePath, destinationErc20FilePath);
+      console.log(`${chalk.green('✅ erc20.rs copied to:')} ${chalk.white(destinationErc20FilePath)}`);
+    } else {
+      throw new Error(
+        `${chalk.red('❌ File missing:')} ${chalk.yellow('erc20.rs')}\n` +
+        `${chalk.cyan('💡 Ensure the ERC20 contract file exists in the "contract" directory.')}`
+      );
+    }
+  }
 
 function getProjectTsFile(): string {
   const currentWorkingDir = process.cwd();
@@ -460,11 +520,15 @@ function getProjectTsFile(): string {
     const stylusCode = convertToStylus(tsCode);
 
     const parentDir = path.dirname(process.cwd());
-    const rustFilePath = path.join(parentDir, 'logic', 'src', 'lib.rs');
-    fs.mkdirSync(path.dirname(rustFilePath), { recursive: true });
-    fs.writeFileSync(rustFilePath, stylusCode);
+    const rustFilePath = path.join(parentDir, 'logic', 'src');
+    fs.mkdirSync(rustFilePath, { recursive: true });
+    const rustOutputFilePath = path.join(rustFilePath, 'lib.rs');
+    fs.writeFileSync(rustOutputFilePath, stylusCode);
 
-    spinner.succeed(chalk.green('✅ Conversion successful!'));
+    const implementsIERC20 = stylusCode.includes("Erc20");
+    checkImplementsIERC20(implementsIERC20, rustFilePath);
+
+    spinner.succeed(chalk.green('Conversion successful!'));
     console.log(`${chalk.blueBright('📦 Output written to:')} ${chalk.white(rustFilePath)}`);
   } catch (error: any) {
     spinner.fail(chalk.red('❌ Conversion failed.'));

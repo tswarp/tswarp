@@ -10,7 +10,7 @@ module.exports = async function compile() {
   try {
     // Attempt to run the converter using ts-node
     execSync(`npx ts-node ${converterPath}`, { stdio: 'inherit' });
-    spinner.succeed(chalk.green('✅ Stylus code generated successfully!'));
+    spinner.succeed(chalk.green('Stylus code generated successfully!'));
   } catch (error) {
     spinner.fail(chalk.red('❌ Compilation failed.'));
     console.error(chalk.red('Error:'), chalk.yellow(error.message));
