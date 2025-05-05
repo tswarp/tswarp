@@ -443,7 +443,7 @@ ${implementsIERC20 ? `        #[borrow]
             implDeclaration = `#[public]
 ${implementsIERC20 ? `#[inherit(Erc20)]` : ""}
 impl ${className} {
-${[...viewMethods, ...writeMethods, ...payableMethods, ...ierc20Methods].join('\n\n')}
+${[ ...ierc20Methods, ...viewMethods, ...writeMethods, ...payableMethods].join('\n\n')}
 }`;
         }
     });
